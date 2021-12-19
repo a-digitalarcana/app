@@ -3,7 +3,7 @@ This repo includes both the react app which hosts the Unity client, as well as t
 
 <img src="img/thumbnail.png" width="175">
 
-### Introduction:
+### Introduction
 
 Digital Arcana is a platform born from the love of tarot art and a desire to utilize it in games. While NFTs today are largely focused on one of two avenues, the purely aesthetic or those bound to a particular game or function, our goal is to merge the two into one. We aim to provide great works of art, which have intrinsic value, integrated seamlessly into a platform that provides that art multiple functions.
 
