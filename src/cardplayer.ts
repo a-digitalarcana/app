@@ -129,7 +129,8 @@ export class CardPlayer
         // query the list of nft token_ids owned by this wallet address
         const bigmapQuery = indexerUrl + fa2Contract + "/bigmaps";
         const ledgerQuery = bigmapQuery + "/ledger/keys?select=key,value,active&key.address=" + this.walletAddress;
-        const { data } = await axios.get<LedgerEntry[]>(ledgerQuery);
+        const config = {headers: {'Content-Type': 'application/json'}};
+        const { data } = await axios.get<LedgerEntry[]>(ledgerQuery, config);
         const active = data.filter(entry => entry.active);
         if (active.length > 0) {
 
@@ -144,7 +145,7 @@ export class CardPlayer
             let metadataQuery = bigmapQuery + "/token_metadata/keys?select=value&key";
             metadataQuery += (token_ids.length === 1) ? "=" : ".in=";
             metadataQuery += token_ids.join(",");
-            const { data } = await axios.get<MetadataEntry[]>(metadataQuery);
+            const { data } = await axios.get<MetadataEntry[]>(metadataQuery, config);
 
             // register unique instances for number owned
             const cards = [];

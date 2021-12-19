@@ -10,7 +10,8 @@ export type EscrowEntry = {
 export const getPendingAmount = async (walletAddress: string) => {
     try {
         const ledgerQuery = indexerUrl + escrowContract + "/bigmaps/m/keys?select=active,value&key=" + walletAddress;
-        const response = await axios.get(ledgerQuery);
+        const config = {headers: {'Content-Type': 'application/json'}};
+        const response = await axios.get(ledgerQuery, config);
         const entry: EscrowEntry = response.data[0];
         return entry.active ? entry.value : 0;
     } catch (error) {
