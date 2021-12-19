@@ -20,3 +20,11 @@ Because each card is an NFT, you own them, and can resell them on marketplaces s
 Digital Arcana is built on [Tezos](https://tezos.com/). This keeps transaction fees low, and the environment happy.
 
 We hope you enjoy DA as much as we do making it!
+
+### Contracts
+
+#### FA2
+https://better-call.dev/hangzhou2net/KT1N1a7TA1rEedQo2pEQXhuVgSQNvgRWKkdJ
+
+#### Escrow
+https://better-call.dev/hangzhou2net/KT1WZY4nrsHbQn6VHX6Ny1X1LYcPb7mss9iK
