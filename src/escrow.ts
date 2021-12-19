@@ -48,12 +48,12 @@ export const buyPack = async () => {
         console.log('Operation hash:', op.opHash);
         await op.confirmation();
         console.log("Confirmed!");
-        return "Confirmed!";
+        return true;
     
     } catch (error) {
         console.log(error);
-        return error;
     }
+    return false;
 };
 
 export const refundPack = async() => {
@@ -67,10 +67,10 @@ export const refundPack = async() => {
         console.log('Operation hash:', op.opHash);
         await op.confirmation();
         console.log("Confirmed!");
-        return "Confirmed!";
+        return true;
     
     } catch (error) {
         console.log(error);
-        return error;
     }
+    return false;
 };

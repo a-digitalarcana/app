@@ -13,6 +13,7 @@ import { connectWallet, getWalletAddress, buyPack, refundPack } from "./escrow";
 import Unity, { UnityContext } from "react-unity-webgl";
 
 const browser = io("/browser");
+const gameManager = "Main Camera";
 
 const unityContext = new UnityContext({
   loaderUrl:    "build/webgl.loader.js",
@@ -38,7 +39,10 @@ function App() {
       setPct(pct);
       setLabel(label);
     });
-    browser.on('error', error => setError(error));
+    browser.on('error', error => {
+      setError(error);
+      unityContext.send(gameManager, "OnMsg", `Error: ${error}`);
+    });
     browser.on('odds', odds => setOdds(odds));
     browser.on('totals', totals => {
       setMinTotals(Math.min(...totals));
@@ -48,19 +52,30 @@ function App() {
 
     unityContext.on("progress", (progression) => setProgresssion(progression));
     unityContext.on("GetHostAddress", () => {
-      unityContext.send("Main Camera", "SetHostAddress", `https://${window.location.host}`);
+      const host = window.location.host;
+      unityContext.send(gameManager, "SetHostAddress", host.startsWith('localhost') ? "http://localhost:8080" : `https://${host}`);
     });
     unityContext.on("GetWalletAddress", async () => {
-      unityContext.send("Main Camera", "SetWalletAddress", await getWalletAddress());
+      unityContext.send(gameManager, "SetWalletAddress", await getWalletAddress());
     });
-  
+    unityContext.on("BuyCardPack", async () => {
+      unityContext.send(gameManager, "OnBuyCardPack", await buyPack() ? 1 : 0); // TODO: Figure out why boolean parameters don't work
+    });
+    unityContext.on("RefundCardPack", async () => {
+      unityContext.send(gameManager, "OnRefundCardPack", await refundPack() ? 1 : 0);
+    });
+    unityContext.on("OpenCardPack", openPack);
+    browser.on('packOpened', (success: boolean) => {
+      unityContext.send(gameManager, "OnOpenCardPack", success ? 1 : 0);
+    });
+
   }, []);
 
   const mintSet = () => browser.emit('mintSet');
   const openPack = async () => browser.emit('openPack', await getWalletAddress());
   const switchAccount = async () => {
     await connectWallet();
-    unityContext.send("Main Camera", "SetWalletAddress", await getWalletAddress());
+    unityContext.send(gameManager, "SetWalletAddress", await getWalletAddress());
   };
 
   const cards = allCards();

@@ -90,7 +90,6 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
             const theSigner = await InMemorySigner.fromSecretKey(secrets.default.account4);
             const Tezos = new TezosToolkit(rpcUrl);
             Tezos.setProvider({signer: theSigner});
-            const publicKeyHash = await Tezos.signer.publicKeyHash();
             const fa2 = await Tezos.contract.at(fa2Contract);
             const escrow = await Tezos.contract.at(escrowContract);
             const batch = Tezos.contract.batch()
@@ -116,12 +115,11 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
                 { returnDocument: ReturnDocument.AFTER }
             );
             console.log(result);
-    
-            break;
+            console.log("Done!");
+            return true;
         }
 
-        socket.emit('error', "Success!");
-        console.log("Done!");
+        console.log("Giving up");
 
     } catch (error) {
         console.log(`Error: ${error}`);
@@ -129,4 +127,6 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
     } finally {
         await mongoClient.close();
     }
+
+    return false;
 };

@@ -28,7 +28,9 @@ const tables: CardTable[] = [];
 io.of("/browser").on("connection", (socket: Socket) => {
     socket.emit('error', "");
 
-    socket.on('openPack', (address: string) => openPack(socket, address, defaultPriceMutez, defaultSet, defaultMinting));
+    socket.on('openPack', async (address: string) => {
+        socket.emit('packOpened', await openPack(socket, address, defaultPriceMutez, defaultSet, defaultMinting));
+    });
 
     if (isDevelopment) {
         socket.emit('isDevelopment', true);
