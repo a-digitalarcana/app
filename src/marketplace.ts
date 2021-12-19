@@ -1,24 +1,11 @@
 import { Socket } from "socket.io";
 import { MongoClient, ReturnDocument } from "mongodb";
-import { escrowContract, fa2Contract, indexerUrl, rpcUrl } from "./contracts";
-import { EscrowEntry } from "./escrow";
+import { escrowContract, fa2Contract, rpcUrl } from "./contracts";
+import { getPendingAmount } from "./escrow";
 import { TezosToolkit } from "@taquito/taquito";
 import { InMemorySigner } from "@taquito/signer";
 import { adminAddress } from "./admin";
 import { isDevelopment } from "./utils";
-import axios from "axios";
-
-export const pendingAmount = async (walletAddress: string) => {
-    try {
-        const ledgerQuery = indexerUrl + escrowContract + "/bigmaps/m/keys?select=active,value&key=" + walletAddress;
-        const response = await axios.get(ledgerQuery);
-        const entry: EscrowEntry = response.data[0];
-        return entry.active ? entry.value : 0;
-    } catch (error) {
-        //console.log(error);
-    }
-    return 0;
-};
 
 // Choose a random pack to transfer to purchaser.
 export const openPack = async (socket: Socket, purchaserAddress: string, priceMutez: number, set: string, minting: string) => {
@@ -32,7 +19,7 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
         signerKey = secrets.default.account4;
         //console.log(`MONGODB_URI=${mongodbUri}`);
     } else {
-        console.log(process.env.MONGODB_URI);
+        //console.log(process.env.MONGODB_URI);
         mongodbUri = process.env.MONGODB_URI;
         signerKey = process.env.SIGNER_KEY;
     }
@@ -52,7 +39,7 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
         console.log({purchaserAddress});
 
         // Verify funds available before sending transaction to avoid revealing cards on malicious attempts.
-        const escrowAmount = await pendingAmount(purchaserAddress);
+        const escrowAmount = await getPendingAmount(purchaserAddress);
         if (escrowAmount != priceMutez) {
             throw `Invalid pending funds: ${escrowAmount} mutez`
         }

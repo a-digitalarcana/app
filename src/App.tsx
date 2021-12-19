@@ -9,8 +9,7 @@ import Button from "react-bootstrap/Button";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
-import { connectWallet, getWalletAddress, buyPack, refundPack } from "./escrow";
-import { pendingAmount } from "./marketplace";
+import { connectWallet, getWalletAddress, getPendingAmount, buyPack, refundPack } from "./escrow";
 import Unity, { UnityContext } from "react-unity-webgl";
 
 const browser = io("/browser");
@@ -60,7 +59,7 @@ function App() {
       unityContext.send(gameManager, "SetWalletAddress", await getWalletAddress());
     });
     unityContext.on("BuyCardPack", async () => {
-      const success = (await pendingAmount(await getWalletAddress()) > 0) || await buyPack();
+      const success = (await getPendingAmount(await getWalletAddress()) > 0) || await buyPack();
       unityContext.send(gameManager, "OnBuyCardPack", success ? 1 : 0); // TODO: Figure out why boolean parameters don't work
     });
     unityContext.on("RefundCardPack", async () => {
