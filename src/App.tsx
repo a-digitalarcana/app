@@ -47,7 +47,10 @@ function App() {
     });
 
     unityContext.on("progress", (progression) => setProgresssion(progression));
-    unityContext.on("ConnectWallet", async () => {
+    unityContext.on("GetHostAddress", () => {
+      unityContext.send("Main Camera", "SetHostAddress", "http://" + window.location.host);
+    });
+    unityContext.on("GetWalletAddress", async () => {
       unityContext.send("Main Camera", "SetWalletAddress", await getWalletAddress());
     });
   
