@@ -5,12 +5,35 @@ import { EscrowEntry } from "./escrow";
 import { TezosToolkit } from "@taquito/taquito";
 import { InMemorySigner } from "@taquito/signer";
 import { adminAddress } from "./admin";
+import { isDevelopment } from "./utils";
 import axios from "axios";
 
 // Choose a random pack to transfer to purchaser.
 export const openPack = async (socket: Socket, purchaserAddress: string, priceMutez: number, set: string, minting: string) => {
-    const mongodb = require("../private/mongodb");
-    const mongoClient = new MongoClient(mongodb.uri);
+
+    // Get secrets
+    let mongodbUri, signerKey;
+    if (isDevelopment) {
+        const mongodb = require("../private/mongodb");
+        const secrets = require("../private/secrets");
+        mongodbUri = mongodb.uri;
+        signerKey = secrets.default.account4;
+        //console.log(`MONGODB_URI=${mongodbUri}`);
+    } else {
+        console.log(process.env.MONGODB_URI);
+        mongodbUri = process.env.MONGODB_URI;
+        signerKey = process.env.SIGNER_KEY;
+    }
+    if (!mongodbUri) {
+        console.log("Invalid mongodbUri");
+        return false;
+    }
+    if (!signerKey) {
+        console.log("Invalid signerKey");
+        return false;
+    }
+
+    const mongoClient = new MongoClient(mongodbUri);
     try {
         const name = `${set} - ${minting}`;
         console.log(`Purchasing pack for ${purchaserAddress} from "${name}" set...`);
@@ -24,9 +47,9 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
                 const entry: EscrowEntry = response.data[0];
                 return entry.active ? entry.value : 0;
             } catch (error) {
-                //console.log(error)
+                //console.log(error);
             }
-            return 0
+            return 0;
         };
         const escrowAmount = await pendingAmount();
         if (escrowAmount != priceMutez) {
@@ -86,8 +109,7 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
             }
 
             // Redeem and transfer tokens to purchaser.
-            const secrets = require("../private/secrets");
-            const theSigner = await InMemorySigner.fromSecretKey(secrets.default.account4);
+            const theSigner = await InMemorySigner.fromSecretKey(signerKey);
             const Tezos = new TezosToolkit(rpcUrl);
             Tezos.setProvider({signer: theSigner});
             const fa2 = await Tezos.contract.at(fa2Contract);
