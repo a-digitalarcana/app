@@ -13,6 +13,7 @@ export class CardTable
         console.log("Destroy table");
         for (let player of this.players) {
             player.table = null;
+            player.pendingTable = true;
         }
         this.players = [];
     }
@@ -31,23 +32,26 @@ export class CardTable
                 player.socket.emit("isPlayerB");
                 break;
         }
-
-        console.log("Player " + player.name + " joined the table");
     }
 
     leave(player: CardPlayer) {
         assert(this.players.includes(player));
         this.players.splice(this.players.indexOf(player), 1);
         player.table = null;
-
-        console.log("Player " + player.name + " left the table");
+        this.emit(player, 'msg', `Player ${player.name} has left the table.`);
     }
 
-    emit(exclude: CardPlayer, ev: any, ...args: any[]) {
+    emit(exclude: CardPlayer | null, ev: any, ...args: any[]) {
         for (let player of this.players) {
             if (player !== exclude) {
-                player.socket.emit(ev, args);
+                player.socket.emit(ev, ...args);
             }
+        }
+    }
+
+    welcome() {
+        for (let player of this.players) {
+            this.emit(player, 'msg', `Player ${player.name} has joined the table!`);
         }
     }
 }

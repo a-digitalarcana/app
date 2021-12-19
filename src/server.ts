@@ -3,7 +3,8 @@ import { isDevelopment } from "./utils";
 import { mintSet } from "./admin";
 import { openPack } from "./marketplace";
 import { CardPlayer } from "./cardplayer";
-import { CardTable } from "./cardtable";
+
+export const players: CardPlayer[] = [];
 
 const express = require('express');
 const http = require('http');
@@ -22,15 +23,7 @@ const defaultSet = "Default (beta)";
 const defaultMinting = "First Edition";
 const defaultPriceMutez = 1000000;
 
-const players: CardPlayer[] = [];
-const tables: CardTable[] = [];
-
 io.of("/browser").on("connection", (socket: Socket) => {
-    socket.emit('error', "");
-
-    socket.on('openPack', async (address: string) => {
-        socket.emit('packOpened', await openPack(socket, address, defaultPriceMutez, defaultSet, defaultMinting));
-    });
 
     if (isDevelopment) {
         socket.emit('isDevelopment', true);
@@ -38,6 +31,10 @@ io.of("/browser").on("connection", (socket: Socket) => {
             mintSet(socket, defaultSet, defaultMinting);
         });
     }
+
+    socket.on('openPack', async (address: string) => {
+        socket.emit('packOpened', await openPack(socket, address, defaultPriceMutez, defaultSet, defaultMinting));
+    });
 });
 
 io.on('connection', (socket: Socket) => {
@@ -46,11 +43,7 @@ io.on('connection', (socket: Socket) => {
     players.push(player);
     socket.on("disconnect", () => {
         players.splice(players.indexOf(player), 1);
-        const table = player.table;
-        if (table) {
-            tables.splice(tables.indexOf(table, 1));
-            table.destroy();
-        }
+        player.destroy();
     });
 
 });

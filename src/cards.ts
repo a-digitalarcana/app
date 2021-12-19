@@ -2,6 +2,8 @@ import { CardPlayer } from "./cardplayer";
 import { strict as assert } from "assert";
 import { Namespace } from "socket.io";
 
+// TODO: Use redis to keep track of cards on server
+
 export type Card = {
     id: number,         // uniquely identifies this card w/o giving away any information concerning it
     token_id: number,   // token_id of this card in the FA2 contract

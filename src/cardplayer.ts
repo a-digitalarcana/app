@@ -4,6 +4,9 @@ import { Card, CardDeck, registerCard } from "./cards";
 import { Socket, Server } from "socket.io";
 import { bytes2Char } from "@taquito/utils";
 import { CardTable } from "./cardtable";
+import { players } from "./server";
+
+const tables: CardTable[] = [];
 
 type LedgerKey = {
     nat: string, // token_id
@@ -29,6 +32,7 @@ export class CardPlayer
     walletAddress: string = "";
     table: CardTable | null = null;
     owned: CardDeck | null = null;
+    pendingTable: boolean = false;
 
     constructor(socket: Socket, io: Server) {
         this.socket = socket;
@@ -42,6 +46,7 @@ export class CardPlayer
 
         socket.on('userName', (name: string) => {
             this.name = name;
+            this.socket.emit('msg', `Welcome ${name}!`);
         });
 
         socket.on('chat', (msg: string) => {
@@ -50,11 +55,48 @@ export class CardPlayer
             }
             console.log(msg);
             if (this.table) {
-                this.table.emit(this, 'msg', msg);
+                this.table.emit(null, 'msg', msg);
             } else {
                 this.socket.emit('msg', msg);
             }
         });
+
+        socket.on('playOnline', (game: string) => {
+            console.log(`Player ${this.name} wants to play ${game}`);
+
+            // See if anyone is waiting
+            for (let player of players) {
+                if (player.pendingTable) {
+                    player.pendingTable = false;
+
+                    // New table for two
+                    var table = new CardTable();
+                    table.join(player);
+                    table.join(this);
+                    table.welcome();
+                    tables.push(table);                    
+                    return;
+                }
+            }
+
+            // Wait for someone else to join
+            this.pendingTable = true;
+            this.socket.emit('msg', "Waiting for another player...");
+
+        });
+    }
+
+    destroy() {
+        const table = this.table;
+        if (table) {
+            table.leave(this);
+
+            // Last one out destroy the table
+            if (table.players.length <= 1) {
+                tables.splice(tables.indexOf(table, 1));
+                table.destroy();
+            }
+        }
     }
 
     revealCards(cards: Card[]) {
