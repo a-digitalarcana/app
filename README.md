@@ -1,5 +1,6 @@
 # Digital Arcana
 <img src="img/thumbnail.png" width="175">
+https://www.youtube.com/watch?v=303oy_oIVVo
 
 ### Introduction
 
