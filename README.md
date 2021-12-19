@@ -29,3 +29,6 @@ https://better-call.dev/hangzhou2net/KT1N1a7TA1rEedQo2pEQXhuVgSQNvgRWKkdJ
 
 #### Escrow
 https://better-call.dev/hangzhou2net/KT1WZY4nrsHbQn6VHX6Ny1X1LYcPb7mss9iK
+
+To avoid revealing cards before they are purchased, we use an escrow contract. User's can add and remove funds, which can be redeemed for card packs. A future implementation might use [tickets](python/contracts/tickets.py) which would allow purchased, unopened packs to be traded, resold, or gifted. Opening a card pack consists of redeeming the escrowed funds and transferring the set of cards to the user in a single atomic transaction on the Tezos network.  This operation is initated by the server at the user's request, and signed by an administration account with operator permission to perform the transaction.  Choosing the set of cards is up to the server, selecting randomly from the available, pre-sorted packs.  This provides the freedom to enable special sales (e.g. guaranteeing a card of a specific rarity), and prevents the set of cards from being exposed before funds have been commited by the purchaser.
+<img src="img/contracts.png" width="332">
