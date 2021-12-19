@@ -23,6 +23,12 @@ const defaultSet = "Default (beta)";
 const defaultMinting = "First Edition";
 const defaultPriceMutez = 1000000;
 
+http.get({'host': 'api.ipify.org', 'port': 80, 'path': '/'}, (resp: any) => {
+    resp.on('data', (ip: any) => {
+        console.log("My public IP address is: " + ip);
+    });
+});
+
 io.of("/browser").on("connection", (socket: Socket) => {
 
     if (isDevelopment) {
