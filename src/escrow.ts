@@ -1,12 +1,6 @@
 import { TezosToolkit, MichelCodecPacker } from "@taquito/taquito";
 import { BeaconWallet } from "@taquito/beacon-wallet";
-import { escrowContract, rpcUrl, network, indexerUrl } from "./contracts";
-import axios from "axios";
-
-export type EscrowEntry = {
-    active: boolean,
-    value: number
-};
+import { escrowContract, rpcUrl, network } from "./contracts";
 
 const Tezos = new TezosToolkit(rpcUrl);
 const wallet = new BeaconWallet({
@@ -35,19 +29,6 @@ export const getWalletAddress = async() => {
 
     await wallet.requestPermissions({network: {type: network, rpcUrl}});
     return await wallet.getPKH();
-};
-
-// Query indexer for value currently in escrow (if any).
-export const getPendingAmount = async (walletAddress: string) => {
-    try {
-        const ledgerQuery = indexerUrl + escrowContract + "/bigmaps/m/keys?select=active,value&key=" + walletAddress;
-        const response = await axios.get(ledgerQuery);
-        const entry: EscrowEntry = response.data[0];
-        return entry.active ? entry.value : 0;
-    } catch (error) {
-        //console.log(error);
-    }
-    return 0;
 };
 
 // TODO: Check sold out status before sending funds.

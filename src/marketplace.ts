@@ -1,7 +1,7 @@
 import { Socket } from "socket.io";
 import { MongoClient, ReturnDocument } from "mongodb";
 import { escrowContract, fa2Contract, rpcUrl } from "./contracts";
-import { getPendingAmount } from "./escrow";
+import { getPendingAmount } from "./escrow-utils";
 import { TezosToolkit } from "@taquito/taquito";
 import { InMemorySigner } from "@taquito/signer";
 import { adminAddress } from "./admin";

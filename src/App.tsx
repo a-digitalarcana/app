@@ -9,7 +9,8 @@ import Button from "react-bootstrap/Button";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
-import { connectWallet, getWalletAddress, getPendingAmount, buyPack, refundPack } from "./escrow";
+import { connectWallet, getWalletAddress, buyPack, refundPack } from "./escrow";
+import { getPendingAmount } from "./escrow-utils";
 import Unity, { UnityContext } from "react-unity-webgl";
 
 const browser = io("/browser");
