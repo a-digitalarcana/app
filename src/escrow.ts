@@ -13,6 +13,7 @@ Tezos.setPackerProvider(new MichelCodecPacker());
 
 export const connectWallet = async() => {
     try {
+        await wallet.clearActiveAccount();
         await wallet.requestPermissions({network: {type: network, rpcUrl}});
     } catch (error) {
         console.log(error);
