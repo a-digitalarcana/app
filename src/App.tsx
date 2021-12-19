@@ -59,7 +59,8 @@ function App() {
       unityContext.send(gameManager, "SetWalletAddress", await getWalletAddress());
     });
     unityContext.on("BuyCardPack", async () => {
-      unityContext.send(gameManager, "OnBuyCardPack", await buyPack() ? 1 : 0); // TODO: Figure out why boolean parameters don't work
+      //unityContext.send(gameManager, "OnBuyCardPack", await buyPack() ? 1 : 0); // TODO: Figure out why boolean parameters don't work
+      unityContext.send(gameManager, "OnBuyCardPack", 1);
     });
     unityContext.on("RefundCardPack", async () => {
       unityContext.send(gameManager, "OnRefundCardPack", await refundPack() ? 1 : 0);
