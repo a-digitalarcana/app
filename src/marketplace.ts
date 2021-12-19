@@ -8,6 +8,18 @@ import { adminAddress } from "./admin";
 import { isDevelopment } from "./utils";
 import axios from "axios";
 
+export const pendingAmount = async (walletAddress: string) => {
+    try {
+        const ledgerQuery = indexerUrl + escrowContract + "/bigmaps/m/keys?select=active,value&key=" + walletAddress;
+        const response = await axios.get(ledgerQuery);
+        const entry: EscrowEntry = response.data[0];
+        return entry.active ? entry.value : 0;
+    } catch (error) {
+        //console.log(error);
+    }
+    return 0;
+};
+
 // Choose a random pack to transfer to purchaser.
 export const openPack = async (socket: Socket, purchaserAddress: string, priceMutez: number, set: string, minting: string) => {
 
@@ -40,18 +52,7 @@ export const openPack = async (socket: Socket, purchaserAddress: string, priceMu
         console.log({purchaserAddress});
 
         // Verify funds available before sending transaction to avoid revealing cards on malicious attempts.
-        const pendingAmount = async () => {
-            try {
-                const ledgerQuery = indexerUrl + escrowContract + "/bigmaps/m/keys?select=active,value&key=" + purchaserAddress;
-                const response = await axios.get(ledgerQuery);
-                const entry: EscrowEntry = response.data[0];
-                return entry.active ? entry.value : 0;
-            } catch (error) {
-                //console.log(error);
-            }
-            return 0;
-        };
-        const escrowAmount = await pendingAmount();
+        const escrowAmount = await pendingAmount(purchaserAddress);
         if (escrowAmount != priceMutez) {
             throw `Invalid pending funds: ${escrowAmount} mutez`
         }

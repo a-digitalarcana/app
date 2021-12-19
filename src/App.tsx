@@ -10,6 +10,7 @@ import ProgressBar from "react-bootstrap/ProgressBar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 import { connectWallet, getWalletAddress, buyPack, refundPack } from "./escrow";
+import { pendingAmount } from "./marketplace";
 import Unity, { UnityContext } from "react-unity-webgl";
 
 const browser = io("/browser");
@@ -59,8 +60,8 @@ function App() {
       unityContext.send(gameManager, "SetWalletAddress", await getWalletAddress());
     });
     unityContext.on("BuyCardPack", async () => {
-      //unityContext.send(gameManager, "OnBuyCardPack", await buyPack() ? 1 : 0); // TODO: Figure out why boolean parameters don't work
-      unityContext.send(gameManager, "OnBuyCardPack", 1);
+      const success = (await pendingAmount(await getWalletAddress()) > 0) || await buyPack();
+      unityContext.send(gameManager, "OnBuyCardPack", success ? 1 : 0); // TODO: Figure out why boolean parameters don't work
     });
     unityContext.on("RefundCardPack", async () => {
       unityContext.send(gameManager, "OnRefundCardPack", await refundPack() ? 1 : 0);
