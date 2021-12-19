@@ -67,5 +67,5 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 server.listen(port, () => {
-    console.log(`server started at http://localhost:${port}`)
+    console.log(`server listening on port: ${port}`)
 });

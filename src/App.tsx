@@ -48,7 +48,7 @@ function App() {
 
     unityContext.on("progress", (progression) => setProgresssion(progression));
     unityContext.on("GetHostAddress", () => {
-      unityContext.send("Main Camera", "SetHostAddress", "http://" + window.location.host);
+      unityContext.send("Main Camera", "SetHostAddress", `http://${window.location.host}:8080`);
     });
     unityContext.on("GetWalletAddress", async () => {
       unityContext.send("Main Camera", "SetWalletAddress", await getWalletAddress());
