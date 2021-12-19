@@ -1,5 +1,6 @@
 import { Card, CardDeck, getShuffledDeck } from "../cards";
 import { CardTable } from "../cardtable";
+import { allCards, minorCards, totalMinor } from "../tarot";
 import { sleep } from "../utils";
 
 export class War
@@ -50,6 +51,16 @@ export class War
         let scoreA = 0;
         let scoreB = 0;
 
+        const cards = allCards();
+
+        // Use face value (ignore suit) unless major arcana (which beats minor)
+        const getValue = (card: Card) => {
+            if (card.value < totalMinor) {
+                return card.value % minorCards.length;
+            }
+            return card.value;
+        }
+
         // Hook up client commands
         for (let player of this.table.players) {
             player.socket.on('drawCard', async () => {
@@ -66,6 +77,7 @@ export class War
                         if (cardA != null) {
                             playedA.add([cardA]);
                             this.table.revealCards([cardA]);
+                            this.table.emit(null, 'msg', `${playerA.name} played ${cards[cardA.value]}`);
                         }
                     }
                 } else {
@@ -74,6 +86,7 @@ export class War
                         if (cardB != null) {
                             playedB.add([cardB]);
                             this.table.revealCards([cardB]);
+                            this.table.emit(null, 'msg', `${playerB.name} played ${cards[cardB.value]}`);
                         }
                     }
                 }
@@ -81,18 +94,24 @@ export class War
                 // Once both selected
                 if (cardA && cardB) {
                     await sleep(1000);
-                    if (cardA.value > cardB.value) {
+                    const valueA = getValue(cardA);
+                    const valueB = getValue(cardB);
+                    if (valueA > valueB) {
                         // Give cards to playerA
                         wonA.add(playedA.cards);
                         wonA.add(playedB.cards);
                         playedA.remove(playedA.cards);
                         playedB.remove(playedB.cards);
-                    } else if (cardB.value > cardA.value) {
+                        this.table.emit(null, 'msg', `${playerA.name} wins round`);
+                    } else if (valueB > valueA) {
                         // Give cards to playerB
                         wonB.add(playedA.cards);
                         wonB.add(playedB.cards);
                         playedA.remove(playedA.cards);
                         playedB.remove(playedB.cards);
+                        this.table.emit(null, 'msg', `${playerB.name} wins round`);
+                    } else {
+                        this.table.emit(null, 'msg', "It's a tie!");
                     }
                     cardA = cardB = null;
                 }

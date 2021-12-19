@@ -29,4 +29,5 @@ export function allCards() {
     return results;
 }
 
-export const totalCards = minorCards.length * minorSuits.length + majorArcana.length;
+export const totalMinor = minorCards.length * minorSuits.length;
+export const totalCards = totalMinor + majorArcana.length;
