@@ -18,5 +18,23 @@ export const getDirectory = async (socket: Socket, dirpath: string) => {
         directory.push(new File([await fs.promises.readFile(filepath)], file));
     }
     return directory;
-}
+};
 
+export const sleep = (ms: number) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
+
+export const randomRange = (minInclusive: number, maxInclusive: number) => {
+    const min = Math.ceil(minInclusive);
+    const max = Math.floor(maxInclusive);
+    return Math.floor(Math.random() * (max - min + 1) + min);
+};
+
+export const shuffle = (list: number[]) => {
+    const count = list.length;
+    const last = count - 1;
+    for (let i = 0; i < last; ++i) {
+        const n = randomRange(i, last);
+        [list[i], list[n]] = [list[n], list[i]];
+    }
+};

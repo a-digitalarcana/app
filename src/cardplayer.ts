@@ -4,7 +4,9 @@ import { Card, CardDeck, registerCard } from "./cards";
 import { Socket, Server } from "socket.io";
 import { bytes2Char } from "@taquito/utils";
 import { CardTable } from "./cardtable";
+import { totalCards } from "./tarot";
 import { players } from "./server";
+import { War } from "./games/war";
 
 const tables: CardTable[] = [];
 
@@ -74,7 +76,12 @@ export class CardPlayer
                     table.join(player);
                     table.join(this);
                     table.welcome();
-                    tables.push(table);                    
+                    tables.push(table);
+
+                    if (game == "War") {
+                        const game = new War(table);
+                        game.begin();
+                    }
                     return;
                 }
             }
@@ -103,7 +110,22 @@ export class CardPlayer
         this.socket.emit('revealCards', cards);
     }
 
+    getBestOwned(value: number) {
+        if (!this.owned) {
+            return null;
+        }
+
+        const owned = this.owned.cards.filter((card) => card.value == value);
+        if (owned.length === 0) {
+            return null;
+        }
+
+        return owned.reduce((best, card) => (card.token_id < best.token_id) ? card : best);
+    }
+
     async getCards() {
+        const owned = new CardDeck(this, "owned");
+
         // query the list of nft token_ids owned by this wallet address
         const bigmapQuery = indexerUrl + fa2Contract + "/bigmaps";
         const ledgerQuery = bigmapQuery + "/ledger/keys?select=key,value,active&key.address=" + this.walletAddress;
@@ -132,7 +154,7 @@ export class CardPlayer
                 const amount = amounts.get(token_id);
                 if (amount) {
                     for (let i = 0; i < amount; i++) {
-                        cards.push(registerCard(token_id, ipfsUri));
+                        cards.push(registerCard(token_id % totalCards, token_id, ipfsUri));
                     }
                     //console.log(`token_id=${entry.token_id} amount=${amount} metadata=${ipfsUri}`);
                 } else {
@@ -140,14 +162,15 @@ export class CardPlayer
                 }
             }
 
-            this.owned = new CardDeck(this, "owned");
-            this.owned.add(cards);
+            owned.add(cards);
             this.revealCards(cards);
-
         }
         else {
             console.log(`No owned cards for ${this.walletAddress}`);
         }
+
+        this.owned = owned;
+
         // TODO: Register for changes to ledger to add/remove cards for this player.
     }
 }

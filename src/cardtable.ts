@@ -1,5 +1,6 @@
 import { CardPlayer } from "./cardplayer";
 import { strict as assert } from 'assert';
+import { Card } from "./cards";
 
 export class CardTable
 {
@@ -46,6 +47,12 @@ export class CardTable
             if (player !== exclude) {
                 player.socket.emit(ev, ...args);
             }
+        }
+    }
+
+    revealCards(cards: Card[]) {
+        for (let player of this.players) {
+            player.revealCards(cards);
         }
     }
 
