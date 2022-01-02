@@ -16,8 +16,7 @@ console.log(process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL_INTERNAL);
 
 export type RedisClientType = ReturnType<typeof createClient>;
 const client: RedisClientType = createClient({
-    url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL_INTERNAL,
-    password: process.env.QOVERY_REDIS_Z8BD2191C_PASSWORD
+    url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL
 });
 (async () => {
     client.on('error', (err) => console.log(`Redis: ${err}`));
