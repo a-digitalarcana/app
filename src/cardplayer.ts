@@ -5,7 +5,7 @@ import { Socket, Server } from "socket.io";
 import { bytes2Char } from "@taquito/utils";
 import { CardTable } from "./cardtable";
 import { totalCards } from "./tarot";
-import { players } from "./server";
+import { players, RedisClientType } from "./server";
 import { War } from "./games/war";
 
 const tables: CardTable[] = [];
@@ -28,6 +28,7 @@ type MetadataEntry = {
 
 export class CardPlayer
 {
+    db: RedisClientType;
     io: Server;
     socket: Socket;
     name: string = "Unknown";
@@ -36,19 +37,40 @@ export class CardPlayer
     owned: CardDeck | null = null;
     pendingTable: boolean = false;
 
-    constructor(socket: Socket, io: Server) {
+    setName(name: string) {
+        this.name = name;
+        this.socket.emit('msg', `Welcome ${name}!`);
+    }
+
+    constructor(socket: Socket, io: Server, db: RedisClientType) {
         this.socket = socket;
         this.io = io;
+        this.db = db;
 
-        socket.on('setWallet', (address: string) => {
+        socket.on('setWallet', async (address: string) => {
             console.log(`setWallet: ${address}`);
             this.walletAddress = address;
+
+            // Fetch cached name (if any)
+            if (this.name === "Unknown") {
+                const name = await db.get(`name:${address}`);
+                if (name) {
+                    this.setName(name);
+                }
+            } else {
+                db.set(`name:${address}`, this.name);
+            }
+
             this.getCards();
         });
 
         socket.on('userName', (name: string) => {
-            this.name = name;
-            this.socket.emit('msg', `Welcome ${name}!`);
+            this.setName(name);
+
+            // Cache name across sessions
+            if (this.walletAddress) {
+                db.set(`name:${this.walletAddress}`, this.name);
+            }
         });
 
         socket.on('chat', (msg: string) => {

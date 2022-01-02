@@ -1,3 +1,4 @@
+import { createClient } from "redis";
 import { Server, Socket } from "socket.io";
 import { isDevelopment } from "./utils";
 import { mintSet } from "./admin";
@@ -9,6 +10,23 @@ export const players: CardPlayer[] = [];
 const express = require('express');
 const http = require('http');
 const path = require('path');
+
+console.log(process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL);
+console.log(process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL_INTERNAL);
+
+export type RedisClientType = ReturnType<typeof createClient>;
+const client: RedisClientType = createClient({
+    url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL_INTERNAL,
+    password: process.env.QOVERY_REDIS_Z8BD2191C_PASSWORD
+});
+(async () => {
+    client.on('error', (err) => console.log(`Redis: ${err}`));
+    client.on('connect', () => console.log("Redis: connect"));
+    client.on('ready', () => console.log("Redis: ready"));
+    client.on('end', () => console.log("Redis: end"));
+    client.on('reconnecting', () => console.log("Redis: reconnecting"));
+    await client.connect();
+})();
 
 const app = express();
 const server = http.createServer(app);
@@ -45,7 +63,7 @@ io.of("/browser").on("connection", (socket: Socket) => {
 
 io.on('connection', (socket: Socket) => {
 
-    const player = new CardPlayer(socket, io);
+    const player = new CardPlayer(socket, io, client);
     players.push(player);
     socket.on("disconnect", () => {
         players.splice(players.indexOf(player), 1);
