@@ -71,6 +71,18 @@ io.on('connection', (socket: Socket) => {
 // Serve client build (production only).
 if (process.env.NODE_ENV !== 'development') {
     console.log('hosting production build');
+
+    // Set up rate limiter: maximum of five requests per minute.
+    const rateLimit = require('express-rate-limit');
+    const limiter = rateLimit({
+        windowMs: 1 * 60 * 1000, // 1 minute
+        max: 5
+    });
+
+    // Apply rate limiter to all requests.
+    app.use(limiter);
+
+    // Serve React app.
     const buildpath = path.join(__dirname, '../build');
     app.use(express.static(buildpath));
     app.get('/', (req: any, res: any) => {
