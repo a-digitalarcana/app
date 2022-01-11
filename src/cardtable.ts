@@ -14,7 +14,6 @@ export class CardTable
         console.log("Destroy table");
         for (let player of this.players) {
             player.table = null;
-            player.pendingTable = true;
         }
         this.players = [];
     }

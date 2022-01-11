@@ -7,6 +7,7 @@ import { CardTable } from "./cardtable";
 import { totalCards } from "./tarot";
 import { players, RedisClientType } from "./server";
 import { War } from "./games/war";
+import { assert } from "console";
 
 const tables: CardTable[] = [];
 
@@ -33,13 +34,20 @@ export class CardPlayer
     socket: Socket;
     name: string = "Unknown";
     walletAddress: string = "";
-    table: CardTable | null = null;
     owned: CardDeck | null = null;
-    pendingTable: boolean = false;
+    table: CardTable | null = null;
 
     setName(name: string) {
         this.name = name;
         this.socket.emit('msg', `Welcome ${name}!`);
+    }
+
+    verifyWallet() {
+        if (!this.walletAddress) {
+            this.socket.emit('msg', "You must choose a wallet before setting your name.");
+            return false;
+        }
+        return true;
     }
 
     constructor(socket: Socket, io: Server, db: RedisClientType) {
@@ -52,25 +60,24 @@ export class CardPlayer
             this.walletAddress = address;
 
             // Fetch cached name (if any)
-            if (this.name === "Unknown") {
-                const name = await db.get(`name:${address}`);
-                if (name) {
-                    this.setName(name);
-                }
-            } else {
-                db.set(`name:${address}`, this.name);
+            const info = await db.hGetAll(this.walletAddress);
+            if (info.name) {
+                this.setName(info.name);
             }
 
-            this.getCards();
+            this.queryOwned();
+            // TODO: Check for game in progress.
         });
 
         socket.on('userName', (name: string) => {
+            if (!this.verifyWallet()) {
+                return;
+            }
+
             this.setName(name);
 
             // Cache name across sessions
-            if (this.walletAddress) {
-                db.set(`name:${this.walletAddress}`, this.name);
-            }
+            db.hSet(this.walletAddress, 'name', name);
         });
 
         socket.on('chat', (msg: string) => {
@@ -85,33 +92,34 @@ export class CardPlayer
             }
         });
 
-        socket.on('playOnline', (game: string) => {
+        socket.on('playOnline', async (game: string) => {
             console.log(`Player ${this.name} wants to play ${game}`);
-
-            // See if anyone is waiting
-            for (let player of players) {
-                if (player.pendingTable) {
-                    player.pendingTable = false;
-
-                    // New table for two
-                    var table = new CardTable();
-                    table.join(player);
-                    table.join(this);
-                    table.welcome();
-                    tables.push(table);
-
-                    if (game == "War") {
-                        const game = new War(table);
-                        game.begin();
-                    }
-                    return;
-                }
+            if (!this.verifyWallet()) {
+                return;
             }
 
-            // Wait for someone else to join
-            this.pendingTable = true;
-            this.socket.emit('msg', "Waiting for another player...");
+            // See if anyone is waiting
+            const player = await this.getNextWaiting();
+            if (player) {
 
+                // New table for two
+                var table = new CardTable();
+                table.join(player);
+                table.join(this);
+                table.welcome();
+                tables.push(table);
+
+                if (game == "War") {
+                    const game = new War(table);
+                    game.begin();
+                }
+
+            } else {
+
+                // Wait for someone else to join
+                this.setWaiting(game);
+                this.socket.emit('msg', "Waiting for another player...");
+            }
         });
     }
 
@@ -126,6 +134,30 @@ export class CardPlayer
                 table.destroy();
             }
         }
+    }
+
+    setWaiting(game: string) {
+        assert(this.walletAddress);
+        this.db.lPush('pendingTable', this.walletAddress);
+        // TODO: Track which game.
+    }
+
+    async getNextWaiting() {
+
+        // Loop through players pending tables...
+        while (true) {
+            const pending = await this.db.rPop('pendingTable');
+            if (!pending) {
+                break;
+            }
+
+            // Return first connected player that doesn't already have a table.
+            const player = findPlayer(pending);
+            if (player && !player.table) {
+                return player;
+            }
+        }
+        return null;
     }
 
     revealCards(cards: Card[]) {
@@ -145,7 +177,14 @@ export class CardPlayer
         return owned.reduce((best, card) => (card.token_id < best.token_id) ? card : best);
     }
 
-    async getCards() {
+    async queryOwned() {
+
+        // Destroy previous deck (if any)
+        if (this.owned) {
+            this.owned.destroy();
+            this.owned = null;
+        }
+
         const owned = new CardDeck(this, "owned");
 
         // query the list of nft token_ids owned by this wallet address
@@ -196,4 +235,14 @@ export class CardPlayer
 
         // TODO: Register for changes to ledger to add/remove cards for this player.
     }
+}
+
+// Find a connected player by walletAddress
+export const findPlayer = (walletAddress: string) => {
+    for (let player of players) {
+        if (player.walletAddress === walletAddress) {
+            return player;
+        }
+    }
+    return null;
 }

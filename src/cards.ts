@@ -43,7 +43,10 @@ export class CardDeck
         this.namespace = owner.io.of(`/${key}`);
     }
 
+    // TODO: Store in redis instead?
+    // TODO: Have Unity connect to redis to get deck info and register for changes? (https://redis.io/clients#c-sharp)
     cards: Card[] = [];
+
     add(cards: Card[]) {
         assert(!this.cards.some(card => cards.includes(card)));
         this.cards = this.cards.concat(cards);
@@ -53,6 +56,10 @@ export class CardDeck
         this.cards = this.cards
             .filter(card => !cards.includes(card));
         this.namespace.emit('removeCards', cards.map(card => card.id));
+    }
+    destroy() {
+        this.namespace.emit('removeCards', this.cards.map(card => card.id));
+        this.cards = [];
     }
 
     drawCard() {

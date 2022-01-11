@@ -7,10 +7,7 @@ import { CardPlayer } from "./cardplayer";
 
 export const players: CardPlayer[] = [];
 
-const express = require('express');
-const http = require('http');
-const path = require('path');
-
+// Connect to Redis db.
 export type RedisClientType = ReturnType<typeof createClient>;
 const client: RedisClientType = createClient({
     url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL
@@ -23,6 +20,11 @@ const client: RedisClientType = createClient({
     client.on('reconnecting', () => console.log("Redis: reconnecting"));
     await client.connect();
 })();
+
+// Setup express server.
+const express = require('express');
+const http = require('http');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -37,12 +39,14 @@ const defaultSet = "Default (beta)";
 const defaultMinting = "First Edition";
 const defaultPriceMutez = 1000000;
 
+// Report public ip.
 http.get({'host': 'api.ipify.org', 'port': 80, 'path': '/'}, (resp: any) => {
     resp.on('data', (ip: any) => {
         console.log("My public IP address is: " + ip);
     });
 });
 
+// Browser socket.io handlers.
 io.of("/browser").on("connection", (socket: Socket) => {
 
     if (isDevelopment) {
@@ -57,6 +61,7 @@ io.of("/browser").on("connection", (socket: Socket) => {
     });
 });
 
+// Unity socket.io connection.
 io.on('connection', (socket: Socket) => {
 
     const player = new CardPlayer(socket, io, client);
