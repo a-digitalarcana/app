@@ -21,7 +21,7 @@
     "express": "^4.17.2",
     "express-rate-limit": "^6.1.0",
     "immer": ">=9.0.12",
-    "mongodb": "^4.3.0",
+    "mongodb": "^4.3.1",
     "nft.storage": "^5.2.0",
     "react": "^17.0.2",
     "react-bootstrap": "^2.1.1",
