@@ -1,64 +1,66 @@
-import { CardPlayer } from "./cardplayer";
-import { strict as assert } from 'assert';
 import { Card } from "./cards";
+import { getUserName, sendEvent } from "./connection";
+import { redis } from "./server";
 
-export class CardTable
-{
-    players: CardPlayer[] = [];
+export const newTable = async (userIds: string[]) => {
 
-    constructor() {
-        console.log("New table");
-    }
+    const getNextTableId = async () => {
+        const id = await redis.incr('nextTableId');
+        return `table:${id}`;
+    };
 
-    destroy() {
-        console.log("Destroy table");
-        for (let player of this.players) {
-            player.table = null;
-        }
-        this.players = [];
-    }
+    const tableId = await getNextTableId();
+    redis.sAdd(`${tableId}:players`, userIds);
+    userIds.forEach((userId, index) => {
 
-    join(player: CardPlayer) {
-        assert(!this.players.includes(player));
-        this.players.push(player);
-        player.table = this;
+        // Store table across sessions.
+        redis.hSet(userId, 'table', tableId);
 
-        switch (this.players.length)
+        // Notify all connections of new table.
+        sendEvent(userId, 'setTable', tableId);
+
+        // Send welcome messages.
+        getUserName(userId).then(name =>
+            broadcastMsg(tableId, `Player ${name} has joined the table!`, userId));
+
+        // Assign player slots.
+        switch (index)
         {
-            case 1:
-                player.socket.emit("isPlayerA");
-                break;
-            case 2:
-                player.socket.emit("isPlayerB");
-                break;
+            case 0: sendEvent(userId, "isPlayerA"); break;
+            case 1: sendEvent(userId, "isPlayerB"); break;
         }
-    }
+    });
 
-    leave(player: CardPlayer) {
-        assert(this.players.includes(player));
-        this.players.splice(this.players.indexOf(player), 1);
-        player.table = null;
-        this.emit(player, 'msg', `Player ${player.name} has left the table.`);
-    }
+    return tableId;
+};
 
-    emit(exclude: CardPlayer | null, ev: any, ...args: any[]) {
-        for (let player of this.players) {
-            if (player !== exclude) {
-                player.socket.emit(ev, ...args);
-            }
-        }
-    }
+// Get the wallet addresses for the players at the table
+export const getPlayers = async (tableId: string) => {
+    return await redis.sMembers(`${tableId}:players`);
+};
 
-    revealCards(cards: Card[]) {
-        for (let player of this.players) {
-            player.revealCards(cards);
-        }
+// Send a message to everyone at the table (with optional exclude userId).
+export const broadcastMsg = async (tableId: string, text: string, exclude?: string) => {
+    const debug = true;
+    if (debug) {
+        text = `${tableId}> ${text}`;
     }
+    const id = await redis.incr(`${tableId}:nextMsgId`);
+    const msg = JSON.stringify({event: 'msg', args: [text], exclude});
+    // TODO: Same exact text will replace previous entry with new score.
+    redis.zAdd(`${tableId}:chat`, {score: id, value: msg}),
+    redis.publish(tableId, "msg")
+};
 
-    welcome() {
-        for (let player of this.players) {
-            this.emit(player, 'msg', `Player ${player.name} has joined the table!`);
-        }
-    }
-}
+export const getMessages = async (tableId: string, min: number | string = "-inf", max: number | string = "+inf") => {
+    return await redis.zRangeByScoreWithScores(`${tableId}:chat`, min, max);
+};
 
+export const broadcast = (tableId: string, event: string, ...args: any[]) => {
+    const msg = JSON.stringify({event, args});
+    redis.publish(tableId, msg);
+};
+
+export const revealCards = (tableId: string, cards: Card[]) => {
+    broadcast(tableId, 'revealCards', cards);
+};

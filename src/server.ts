@@ -3,22 +3,20 @@ import { Server, Socket } from "socket.io";
 import { isDevelopment } from "./utils";
 import { mintSet } from "./admin";
 import { openPack } from "./marketplace";
-import { CardPlayer } from "./cardplayer";
-
-export const players: CardPlayer[] = [];
+import { Connection } from "./connection";
 
 // Connect to Redis db.
 export type RedisClientType = ReturnType<typeof createClient>;
-const client: RedisClientType = createClient({
+export const redis: RedisClientType = createClient({
     url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL
 });
 (async () => {
-    client.on('error', (err) => console.log(`Redis: ${err}`));
-    client.on('connect', () => console.log("Redis: connect"));
-    client.on('ready', () => console.log("Redis: ready"));
-    client.on('end', () => console.log("Redis: end"));
-    client.on('reconnecting', () => console.log("Redis: reconnecting"));
-    await client.connect();
+    redis.on('error', (err) => console.log(`Redis: ${err}`));
+    redis.on('connect', () => console.log("Redis: connect"));
+    redis.on('ready', () => console.log("Redis: ready"));
+    redis.on('end', () => console.log("Redis: end"));
+    redis.on('reconnecting', () => console.log("Redis: reconnecting"));
+    await redis.connect();
 })();
 
 // Setup express server.
@@ -28,7 +26,7 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
+export const io = new Server(server, {
     cors: {
       origin: ["http://localhost:3000"]
     }
@@ -63,14 +61,10 @@ io.of("/browser").on("connection", (socket: Socket) => {
 
 // Unity socket.io connection.
 io.on('connection', (socket: Socket) => {
-
-    const player = new CardPlayer(socket, io, client);
-    players.push(player);
+    const player = new Connection(socket);
     socket.on("disconnect", () => {
-        players.splice(players.indexOf(player), 1);
-        player.destroy();
+        player.disconnect();
     });
-
 });
 
 // Serve client build (production only).
