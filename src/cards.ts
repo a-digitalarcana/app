@@ -105,13 +105,17 @@ export class CardDeck
         this.namespace.emit('removeCards', ids);
     }
 
-    transferAll(dest: CardDeck) {
+    transferAllTo(dest: CardDeck) {
         redis.zRange(this.key, 0, -1).then(idStrings => {
             const ids = idStrings.map(Number);
             this.namespace.emit('removeCards', ids);
             dest.addIds(ids);
         });
         redis.del(this.key);
+    }
+
+    transferAllFrom(decks: CardDeck[]) {
+        decks.forEach(deck => deck.transferAllTo(this));
     }
 
     destroy() {

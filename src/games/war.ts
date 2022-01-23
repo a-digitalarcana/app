@@ -108,15 +108,11 @@ export class War
                     const valueA = getValue(cardA);
                     const valueB = getValue(cardB);
                     if (valueA > valueB) {
-                        // Give cards to playerA
-                        playedA.transferAll(wonA);
-                        playedB.transferAll(wonA);
+                        wonA.transferAllFrom([playedA, playedB]);
                         const name = await getUserName(playerA);
                         broadcastMsg(this.tableId, `${name} wins round`);
                     } else if (valueB > valueA) {
-                        // Give cards to playerB
-                        playedA.transferAll(wonB);
-                        playedB.transferAll(wonB);
+                        wonB.transferAllFrom([playedA, playedB]);
                         const name = await getUserName(playerB);
                         broadcastMsg(this.tableId, `${name} wins round`);
                     } else {
