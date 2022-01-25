@@ -13,6 +13,9 @@ export const newTable = async (userIds: string[]) => {
     redis.sAdd(`${tableId}:players`, userIds);
     userIds.forEach((userId, index) => {
 
+        // TODO: Remove userId from prev table's players list
+        //       (Cleanup on empty)
+
         // Store table across sessions.
         redis.hSet(userId, 'table', tableId);
 
@@ -22,13 +25,6 @@ export const newTable = async (userIds: string[]) => {
         // Send welcome messages.
         getUserName(userId).then(name =>
             broadcastMsg(tableId, `Player ${name} has joined the table!`, userId));
-
-        // Assign player slots.
-        switch (index)
-        {
-            case 0: sendEvent(userId, "isPlayerA"); break;
-            case 1: sendEvent(userId, "isPlayerB"); break;
-        }
     });
 
     return tableId;

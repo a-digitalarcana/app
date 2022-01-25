@@ -59,7 +59,7 @@ export const getOwned = async (walletAddress: string) => {
 };
 
 export const newDeck = async (tableId: string, name: string) => {
-    const deck = new CardDeck(`${tableId}:deck:${name}`);
+    const deck = new CardDeck(name, `${tableId}:deck:${name}`);
     broadcast(tableId, 'newDeck', name, deck.namespace.name);
 
     // TODO: Clients should probably ask for this instead on receiving above event.
@@ -74,13 +74,17 @@ export const newDeck = async (tableId: string, name: string) => {
 // A collection of cards (not necessarily a full deck, might be a discard pile, or current set of cards in hand, etc.).
 export class CardDeck
 {
+    _name: string;
+    get name() { return this._name; }
+
     _key: string;
     get key() {return this._key;}
 
     namespace: Namespace; // socket.io
     maxIndex: number = 0;
 
-    constructor(key: string) {
+    constructor(name: string, key: string) {
+        this._name = name;
         this._key = key;
         this.namespace = io.of(`/${key}`);
     }

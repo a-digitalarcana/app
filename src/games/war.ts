@@ -1,7 +1,7 @@
 import { Card, hasOwned, newDeck, getShuffledDeck } from "../cards";
-import { getPlayers, broadcastMsg, revealCards } from "../cardtable";
+import { getPlayers, broadcastMsg, revealCards, broadcast } from "../cardtable";
 import { allCards, minorCards, totalMinor } from "../tarot";
-import { getUserName } from "../connection";
+import { getUserName, sendEvent } from "../connection";
 import { redis } from "../server";
 import { sleep } from "../utils";
 import { assert } from "console";
@@ -26,6 +26,8 @@ export class War
             });
             return;
         }
+
+        broadcast(this.tableId, 'beginGame', 'War');
 
         const playerA = players[0];
         const playerB = players[1];
@@ -142,6 +144,9 @@ export class War
 
         deckA.add(await getShuffledDeck(playerA));
         deckB.add(await getShuffledDeck(playerB));
+
+        sendEvent(playerA, 'setDrawPile', deckA.name);
+        sendEvent(playerB, 'setDrawPile', deckB.name);
 
         console.log("GO");
     }
