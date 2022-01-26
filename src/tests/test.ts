@@ -1,7 +1,11 @@
 import test from 'ava';
+import { createClient } from "redis";
 
-const fn = () => 'foo';
+test('redis connection', async t => {
 
-test('fn() returns foo', t => {
-	t.is(fn(), 'foo');
+    const redis = createClient();
+    redis.on('connect', () => t.pass());
+    redis.on('error', () => t.fail());
+    await redis.connect();
+    t.log(await redis.info('Server'));
 });
