@@ -44,8 +44,9 @@
   "scripts": {
     "start": "npx ts-node ./src/server.ts",
     "start-client": "react-scripts start",
+    "test-client": "react-scripts test",
     "build": "react-scripts build",
-    "test": "react-scripts test && c8 ava",
+    "test": "c8 ava",
     "eject": "react-scripts eject",
     "server-dev": "NODE_ENV=development nodemon --ignore sets/ ./src/server.ts"
   },
