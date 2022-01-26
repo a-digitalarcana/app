@@ -68,5 +68,13 @@
   },
   "devDependencies": {
     "ava": "^4.0.1"
-  }
+  },
+  "ava": {
+		"extensions": [
+			"ts"
+		],
+		"require": [
+			"ts-node/register"
+		]
+	}
 }
