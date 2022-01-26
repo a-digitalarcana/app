@@ -37,13 +37,6 @@ const defaultSet = "Default (beta)";
 const defaultMinting = "First Edition";
 const defaultPriceMutez = 1000000;
 
-// Report public ip.
-http.get({'host': 'api.ipify.org', 'port': 80, 'path': '/'}, (resp: any) => {
-    resp.on('data', (ip: any) => {
-        console.log("My public IP address is: " + ip);
-    });
-});
-
 // Browser socket.io handlers.
 io.of("/browser").on("connection", (socket: Socket) => {
 
@@ -70,6 +63,13 @@ io.on('connection', (socket: Socket) => {
 // Serve client build (production only).
 if (process.env.NODE_ENV !== 'development') {
     console.log('hosting production build');
+
+    // Report public ip.
+    http.get({'host': 'api.ipify.org', 'port': 80, 'path': '/'}, (resp: any) => {
+        resp.on('data', (ip: any) => {
+            console.log("My public IP address is: " + ip);
+        });
+    });
 
     // Set up rate limiter: maximum of five requests per minute.
     const rateLimit = require('express-rate-limit');
