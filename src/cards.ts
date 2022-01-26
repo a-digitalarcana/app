@@ -14,7 +14,7 @@ export type Card = {
     ipfsUri: string     // metadata location
 }
 
-export const registerCard = async (value: number, token_id: number, ipfsUri: string) => {
+export const registerCard = async (value: number, token_id: number = -1, ipfsUri: string = "") => {
     const getNextCardId = async (): Promise<number> => {
         return await redis.incr('nextCardId');
     };
@@ -75,7 +75,7 @@ export const newDeck = async (tableId: string, name: string) => {
 export class CardDeck
 {
     _name: string;
-    get name() { return this._name; }
+    get name() {return this._name;}
 
     _key: string;
     get key() {return this._key;}
@@ -87,6 +87,7 @@ export class CardDeck
         this._name = name;
         this._key = key;
         this.namespace = io.of(`/${key}`);
+        redis.del(key);
     }
 
     add = (cards: Card[]) => this.addIds(cards.map(card => card.id));
@@ -142,7 +143,7 @@ export const getShuffledDeck = async (walletAddress: string) => {
 
     return await Promise.all(values.map(async (value) => {
         const best = await getBestOwned(walletAddress, value);
-        return best ?? await registerCard(value, -1, ""); // loaner
+        return best ?? await registerCard(value); // loaner
     }));
 };
 
