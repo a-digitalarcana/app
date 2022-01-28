@@ -22,6 +22,21 @@ test('new deck', async t => {
     t.truthy(deck);
 });
 
+test('num cards', async t => {
+    const deck = await newDeck(tableId, "test");
+    const cards = await registerCards([1, 2, 3]);
+    deck.add(cards);
+    t.is(await deck.numCards(), cards.length);
+
+    // Remove first
+    deck.remove(cards.slice(0, 1));
+    t.is(await deck.numCards(), cards.length-1);
+
+    // Remove rest
+    deck.remove(cards.slice(1));
+    t.is(await deck.numCards(), 0);
+});
+
 test('deck transfer', async t => {
     const [deckA, deckB] = await Promise.all([
          newDeck(tableId, "deckA"),

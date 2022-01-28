@@ -83,7 +83,6 @@ class CardCollector
 
             const cards = await Promise.all(promises);
             addOwned(this.walletAddress, cards);
-            sendEvent(this.walletAddress, 'revealCards', cards);
         }
         else {
             console.log(`No owned cards for ${this.walletAddress}`);

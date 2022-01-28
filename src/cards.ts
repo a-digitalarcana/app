@@ -129,6 +129,10 @@ export class CardDeck
         redis.del(this.key);
     }
 
+    async numCards() {
+        return await redis.zCard(this.key);
+    }
+
     async drawCard() {
         const top = await redis.zPopMin(this.key);
         return top ? await getCard(Number(top.value)) : null;

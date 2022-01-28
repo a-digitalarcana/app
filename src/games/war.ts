@@ -1,49 +1,25 @@
-import { Card, hasOwned, newDeck, getShuffledDeck } from "../cards";
-import { getPlayers, broadcastMsg, revealCards, broadcast } from "../cardtable";
+import { CardGame } from "../cardgame";
+import { Card, newDeck, getShuffledDeck } from "../cards";
+import { broadcastMsg, revealCards } from "../cardtable";
 import { allCards, minorCards, totalMinor } from "../tarot";
 import { getUserName, sendEvent } from "../connection";
-import { redis } from "../server";
 import { sleep } from "../utils";
-import { assert } from "console";
+import { strict as assert } from "assert";
 
-export class War
+export class War extends CardGame
 {
-    _tableId: string;
-    get tableId() {return this._tableId;}
-
-    constructor(tableId: string) {
-        this._tableId = tableId;
-    }
+    getName() {return "War";}
+    getMinPlayers() {return 2;}
+    getMaxPlayers() {return 2;}
 
     async begin() {
-        console.log("Begin Game: War");
-
-        const players = await getPlayers(this.tableId);
-        if (players.length != 2) {
-            broadcastMsg(this.tableId, "Invalid number of players:");
-            players.forEach((userId, index) => {
-                broadcastMsg(this.tableId, `${index+1}: ${userId}`);
-            });
-            return;
+        if (!await super.begin()) {
+            return false;
         }
 
-        broadcast(this.tableId, 'beginGame', 'War');
-
-        const playerA = players[0];
-        const playerB = players[1];
+        const playerA = this.players[0];
+        const playerB = this.players[1];
         assert(playerA != playerB);
-
-        // Give players a chance to query their cards (server-side)
-        for (let i = 0; i < 5; i++) {
-
-            const owned = await Promise.all(players.map(walletAddress => hasOwned(walletAddress)));
-            if (owned.every(Boolean)) {
-                break;
-            }
-
-            console.log("Waiting for cards...");
-            await sleep(1000);
-        }
 
         const [deckA, deckB, playedA, playedB, wonA, wonB] = await Promise.all([
             newDeck(this.tableId, 'DeckA'),
@@ -71,74 +47,70 @@ export class War
         }
 
         // Hook up client commands
-        for (let player of players) {
-            const sub = redis.duplicate();
-            sub.connect();
-            sub.subscribe(`${player}:drawCard`, async () => {
+        this.onDrawCard(async (player) => {
 
-                // Wait for board to clear
-                if (cardA && cardB) {
-                    return;
-                }
+            // Wait for board to clear
+            if (cardA && cardB) {
+                return;
+            }
 
-                // Select a card if haven't already
-                if (player === playerA) {
-                    if (cardA === null) {
-                        cardA = await deckA.drawCard();
-                        if (cardA != null) {
-                            playedA.add([cardA]);
-                            revealCards(this.tableId, [cardA]);
-                            const name = await getUserName(playerA);
-                            broadcastMsg(this.tableId, `${name} played ${cards[cardA.value]}`);
-                        }
-                    }
-                } else {
-                    if (cardB === null) {
-                        cardB = await deckB.drawCard();
-                        if (cardB != null) {
-                            playedB.add([cardB]);
-                            revealCards(this.tableId, [cardB]);
-                            const name = await getUserName(playerB);
-                            broadcastMsg(this.tableId, `${name} played ${cards[cardB.value]}`);
-                        }
-                    }
-                }
-
-                // Once both selected
-                if (cardA && cardB) {
-                    await sleep(1000);
-                    const valueA = getValue(cardA);
-                    const valueB = getValue(cardB);
-                    if (valueA > valueB) {
-                        wonA.transferAllFrom([playedA, playedB]);
+            // Select a card if haven't already
+            if (player === playerA) {
+                if (cardA === null) {
+                    cardA = await deckA.drawCard();
+                    if (cardA != null) {
+                        playedA.add([cardA]);
+                        revealCards(this.tableId, [cardA]);
                         const name = await getUserName(playerA);
-                        broadcastMsg(this.tableId, `${name} wins round`);
-                    } else if (valueB > valueA) {
-                        wonB.transferAllFrom([playedA, playedB]);
+                        broadcastMsg(this.tableId, `${name} played ${cards[cardA.value]}`);
+                    }
+                }
+            } else {
+                if (cardB === null) {
+                    cardB = await deckB.drawCard();
+                    if (cardB != null) {
+                        playedB.add([cardB]);
+                        revealCards(this.tableId, [cardB]);
                         const name = await getUserName(playerB);
-                        broadcastMsg(this.tableId, `${name} wins round`);
-                    } else {
-                        broadcastMsg(this.tableId, "It's a tie!");
+                        broadcastMsg(this.tableId, `${name} played ${cards[cardB.value]}`);
                     }
-                    cardA = cardB = null;
                 }
+            }
 
-                /*
-                if (gameOver) {
-                    let result = "";
-                    if (scoreA === scoreB) {
-                        result = "Game ended in a tie!";
-                    } else if (scoreA > scoreB) {
-                        result = `Player ${playerA.name} wins!`;
-                    } else {
-                        result = `Player ${playerB.name} wins!`;
-                    }
-                    broadcastMsg(this.tableId, result);
-                    sub.disconnect();
+            // Once both selected
+            if (cardA && cardB) {
+                await sleep(1000);
+                const valueA = getValue(cardA);
+                const valueB = getValue(cardB);
+                if (valueA > valueB) {
+                    wonA.transferAllFrom([playedA, playedB]);
+                    const name = await getUserName(playerA);
+                    broadcastMsg(this.tableId, `${name} wins round`);
+                } else if (valueB > valueA) {
+                    wonB.transferAllFrom([playedA, playedB]);
+                    const name = await getUserName(playerB);
+                    broadcastMsg(this.tableId, `${name} wins round`);
+                } else {
+                    broadcastMsg(this.tableId, "It's a tie!");
                 }
-                */
-            });
-        }
+                cardA = cardB = null;
+            }
+
+            /*
+            if (gameOver) {
+                let result = "";
+                if (scoreA === scoreB) {
+                    result = "Game ended in a tie!";
+                } else if (scoreA > scoreB) {
+                    result = `Player ${playerA.name} wins!`;
+                } else {
+                    result = `Player ${playerB.name} wins!`;
+                }
+                broadcastMsg(this.tableId, result);
+                sub.disconnect();
+            }
+            */
+        });
 
         await sleep(500); // TODO: Don't rely on this
 
@@ -149,5 +121,6 @@ export class War
         sendEvent(playerB, 'setDrawPile', deckB.name);
 
         console.log("GO");
+        return true;
     }
 }

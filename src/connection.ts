@@ -3,8 +3,10 @@ import { newTable, broadcastMsg, getMessages } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
 import { redis, RedisClientType } from "./server";
+import { Browse } from "./games/browse";
 import { War } from "./games/war";
-import { assert } from "console";
+import { strict as assert } from "assert";
+import { sleep } from "./utils";
 
 export const getUserName = async (userId: string) => {
     const name = await redis.hGet(userId, 'name');
@@ -71,9 +73,17 @@ export class Connection
             if (info.name) {
                 this.welcome(info.name);
             }
-            this.setTable(info.table ?? null);
 
             collectCards(address);
+
+            // TODO: Restore table and game in progress
+            //this.setTable(info.table ?? null);
+
+            // TODO: Handle concurrent wallet connections
+            const tableId = await newTable([this.userId]);
+            await sleep(500); // TODO: Looks like we need to cache all events, not just msgs.
+            const game = new Browse(tableId);
+            game.begin();
         });
 
         socket.on('userName', (name: string) => {
@@ -115,6 +125,7 @@ export class Connection
                 const tableId = await newTable([waiting, this.userId]);
 
                 if (game == "War") {
+                    await sleep(500); // TODO: Looks like we need to cache all events, not just msgs.
                     const game = new War(tableId);
                     game.begin();
                 }
@@ -127,7 +138,11 @@ export class Connection
             }
         });
 
-        socket.on('drawCard', () => redis.publish(`${this.userId}:drawCard`, ""));
+        socket.on('drawCard', () => {
+            if (this.tableId) {
+                redis.publish(`${this.tableId}:drawCard`, this.userId);
+            }
+        });
     }
 
     handleEvent(event: any, payload: any) {
@@ -214,4 +229,3 @@ export class Connection
         this.socket.emit('revealCards', cards);
     }
 }
-
