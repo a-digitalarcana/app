@@ -75,8 +75,12 @@
     "extensions": [
       "ts"
     ],
+    "files": [
+      "src/tests/*"
+    ],
     "require": [
       "ts-node/register"
-    ]
+    ],
+    "timeout": "1m"
   }
 }
