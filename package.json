@@ -23,7 +23,7 @@
     "engine.io": ">=6.1.1",
     "express": "^4.17.2",
     "express-rate-limit": "^6.2.0",
-    "glob-parent": ">=5.1.2",
+    "glob-parent": ">=6.0.2",
     "immer": ">=9.0.12",
     "mongodb": "^4.3.1",
     "nanoid": ">=3.1.31",
