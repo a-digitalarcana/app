@@ -6,7 +6,7 @@
   "dependencies": {
     "@airgap/beacon-sdk": "^2.3.9",
     "@pinata/sdk": "^1.1.23",
-    "@taquito/beacon-wallet": "^11.1.0",
+    "@taquito/beacon-wallet": "^11.2.0",
     "@taquito/signer": "^11.1.0",
     "@taquito/taquito": "^11.0.2",
     "@testing-library/jest-dom": "^5.16.1",
