@@ -8,7 +8,8 @@ import { Connection } from "./connection";
 // Connect to Redis db.
 export type RedisClientType = ReturnType<typeof createClient>;
 export const redis: RedisClientType = createClient({
-    url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL
+    url: process.env.QOVERY_REDIS_Z8BD2191C_DATABASE_URL,
+    socket: {connectTimeout: isDevelopment ? 600000 : 5000}
 });
 (async () => {
     redis.on('error', (err) => console.log(`Redis: ${err}`));

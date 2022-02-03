@@ -1,28 +1,23 @@
-import { Card } from "./cards";
-import { newTable, broadcastMsg, getMessages } from "./cardtable";
+import { Card, getCards } from "./cards";
+import { newTable, beginGame, resumeGame, broadcastMsg } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
-import { redis, RedisClientType } from "./server";
-import { Browse } from "./games/browse";
-import { War } from "./games/war";
+import { redis } from "./server";
 import { strict as assert } from "assert";
-import { sleep } from "./utils";
 
 export const getUserName = async (userId: string) => {
     const name = await redis.hGet(userId, 'name');
     return name ?? "Unknown";
 };
 
-// setTable: tableId (string)
-// revealCards: cards (Card[])
-export const sendEvent = (userId: string, event: any, payload?: any) => {
-    redis.publish(userId, JSON.stringify({event, payload}));
+export const sendEvent = (id: string, event: any, ...args: any[]) => {
+    const msg = JSON.stringify({event, args});
+    redis.xAdd(`${id}:events`, '*', {msg});
 };
 
 export class Connection
 {
-    sub: RedisClientType;
-    msg: RedisClientType;
+    connected = true;
     socket: Socket;
     userId: string = ""; // wallet address
     tableId: string | null = null;
@@ -44,46 +39,62 @@ export class Connection
     }
 
     disconnect() {
-        this.sub.disconnect();
-        this.msg.disconnect();
+        this.connected = false;
     }
 
     constructor(socket: Socket) {
         this.socket = socket;
-        this.sub = redis.duplicate();
-        this.msg = redis.duplicate();
-        this.sub.connect();
-        this.msg.connect();
+
+        // Message handler
+        (async () => {
+            const stream = redis.duplicate();
+            await stream.connect();
+    
+            const ids: any = {};
+
+            while (this.connected) {
+
+                const streams = [
+                    `${this.userId}:events`,
+                    `${this.tableId}:events`,
+                    `${this.tableId}:chat`,
+                ];
+
+                const response = await stream.xRead(
+                    streams.map(stream => ({id: ids[stream] ?? '0-0', key: stream})),
+                    {BLOCK: 5000}
+                );
+                response?.forEach(stream => {
+                    stream.messages.forEach(msg => {
+                        this.handleEvent(msg.message.msg);
+                        ids[stream.name] = msg.id;
+                    });
+                });
+            }
+            stream.disconnect();
+        })();
 
         socket.on('setWallet', async (address: string) => {
             console.log(`setWallet: ${address}`);
 
-            // Handle table join commands
-            if (this.userId) {
-                this.sub.unsubscribe(this.userId);
-            }
+            const oldId = this.userId;
             this.userId = address;
-            this.sub.subscribe(this.userId, msg => {
-                const data = JSON.parse(msg);
-                this.handleEvent(data.event, data.payload);
-            });
+
+            collectCards(address);
 
             // Fetch cached data
             const info = await redis.hGetAll(this.userId);
             if (info.name) {
                 this.welcome(info.name);
             }
+            if (info.table) {
+                this.setTable(info.table);
+            } else {
+                const tableId = await newTable([this.userId]);
+                beginGame('Browse', tableId);
+            }
 
-            collectCards(address);
-
-            // TODO: Restore table and game in progress
-            //this.setTable(info.table ?? null);
-
-            // TODO: Handle concurrent wallet connections
-            const tableId = await newTable([this.userId]);
-            await sleep(500); // TODO: Looks like we need to cache all events, not just msgs.
-            const game = new Browse(tableId);
-            game.begin();
+            sendEvent(oldId, ""); // refresh streams
         });
 
         socket.on('userName', (name: string) => {
@@ -123,12 +134,7 @@ export class Connection
 
                 // New table for two
                 const tableId = await newTable([waiting, this.userId]);
-
-                if (game == "War") {
-                    await sleep(500); // TODO: Looks like we need to cache all events, not just msgs.
-                    const game = new War(tableId);
-                    game.begin();
-                }
+                beginGame(game, tableId);
 
             } else {
 
@@ -143,14 +149,13 @@ export class Connection
                 redis.publish(`${this.tableId}:drawCard`, this.userId);
             }
         });
-    }
 
-    handleEvent(event: any, payload: any) {
-        switch (event) {
-            case 'setTable': this.setTable(payload); break;
-            case 'revealCards': this.revealCards(payload); break;
-            default: this.socket.emit(event, payload); break;
-        }
+        socket.on('getCards', async (name: string) => {
+            if (this.tableId) {
+                const cards = await getCards(this.tableId, name);
+                this.socket.emit('setCards', name, cards);
+            }
+        });
     }
 
     setWaiting(game: string) {
@@ -181,51 +186,24 @@ export class Connection
         return null;
     }
 
-    async setTable(tableId: string | null) {
-
-        // Cleanup previous.
-        if (this.tableId) {
-            this.msg.unsubscribe(this.tableId);
-        }
-
+    async setTable(tableId: string) {
         this.tableId = tableId;
-        if (!tableId) {
-            return;
-        }
-
-        // Broadcast event handler.
-        let last = -1;
-        const onMsg = async (msg: string = "msg") => {
-            if (msg === "msg") {
-                const msgs = await getMessages(tableId, last+1);
-                for (let msg of msgs) {
-                    if (msg.score <= last) {
-                        continue;
-                    }
-                    last = msg.score;
-                    this.handleMsg(msg.value);
-                }
-            } else {
-                this.handleMsg(msg);
-            }
-        };
-
-        await this.msg.subscribe(tableId, onMsg);
-
-        // Get any pending messages, now
-        // that our handler is hooked up.
-        onMsg();
-    }
-
-    handleMsg(msg: string) {
-        const data = JSON.parse(msg);
-        if (data.exclude === this.userId) {
-            return;
-        }
-        this.socket.emit(data.event, ...data.args);
+        resumeGame(tableId);
     }
 
     revealCards(cards: Card[]) {
         this.socket.emit('revealCards', cards);
+    }
+
+    handleEvent(msg: string) {
+        const data = JSON.parse(msg);
+        if (data.exclude === this.userId) {
+            return;
+        }
+        switch (data.event) {
+            case '': break;
+            case 'setTable': this.setTable(data.args[0]); break;
+            default: this.socket.emit(data.event, ...data.args); break;
+        }
     }
 }

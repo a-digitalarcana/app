@@ -3,7 +3,6 @@ import { indexerUrl, fa2Contract } from "./contracts";
 import { bytes2Char } from "@taquito/utils";
 import { addOwned, clearOwned, registerCard } from "./cards";
 import { totalCards } from "./tarot";
-import { sendEvent } from "./connection";
 
 type LedgerKey = {
     nat: string, // token_id

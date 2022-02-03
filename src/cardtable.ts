@@ -1,6 +1,58 @@
 import { Card } from "./cards";
 import { getUserName, sendEvent } from "./connection";
+import { strict as assert } from "assert";
 import { redis } from "./server";
+import { Browse } from "./games/browse";
+import { War } from "./games/war";
+
+const gameTypes: any = {
+    Browse,
+    War,
+};
+
+const newGame = (className: string, tableId: string) => {
+    return new gameTypes[className](tableId);
+};
+
+const games: any = {};
+
+export const beginGame = (name: string, tableId: string) => {
+
+    const game = newGame(name, tableId);
+    assert(game);
+
+    // TODO: Clean up old game?
+    assert(!(tableId in games));
+    games[tableId] = game;
+
+    // Cache name of game.
+    redis.hSet(tableId, 'game', name);
+
+    game.begin();
+};
+
+export const resumeGame = async (tableId: string) => {
+
+    // Bail if someone else already resumed.
+    if (games[tableId]) {
+        return;
+    }
+
+    // Get cached name of game, if any.
+    const name = await redis.hGet(tableId, 'game');
+    if (!name) {
+        return;
+    }
+
+    const game = newGame(name, tableId);
+    assert(game);
+
+    games[tableId] = game;
+
+    // TODO: Setup callbacks, without creating new decks, etc.
+    game.begin();
+};
+
 
 export const newTable = async (userIds: string[]) => {
 
@@ -41,22 +93,10 @@ export const broadcastMsg = async (tableId: string, text: string, exclude?: stri
     if (debug) {
         text = `${tableId}> ${text}`;
     }
-    const id = await redis.incr(`${tableId}:nextMsgId`);
     const msg = JSON.stringify({event: 'msg', args: [text], exclude});
-    // TODO: Same exact text will replace previous entry with new score.
-    redis.zAdd(`${tableId}:chat`, {score: id, value: msg}),
-    redis.publish(tableId, "msg")
-};
-
-export const getMessages = async (tableId: string, min: number | string = "-inf", max: number | string = "+inf") => {
-    return await redis.zRangeByScoreWithScores(`${tableId}:chat`, min, max);
-};
-
-export const broadcast = (tableId: string, event: string, ...args: any[]) => {
-    const msg = JSON.stringify({event, args});
-    redis.publish(tableId, msg);
+    redis.xAdd(`${tableId}:chat`, '*', {msg});
 };
 
 export const revealCards = (tableId: string, cards: Card[]) => {
-    broadcast(tableId, 'revealCards', cards);
+    sendEvent(tableId, 'revealCards', cards);
 };

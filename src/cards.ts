@@ -3,7 +3,7 @@ import { Namespace } from "socket.io";
 import { totalCards } from "./tarot";
 import { shuffle } from "./utils";
 import { io, redis } from "./server";
-import { broadcast } from "./cardtable";
+import { sendEvent } from "./connection";
 
 // TODO: Have Unity connect to redis to get deck info and register for changes? (https://redis.io/clients#c-sharp)
 
@@ -60,15 +60,14 @@ export const getOwned = async (walletAddress: string) => {
 
 export const newDeck = async (tableId: string, name: string) => {
     const deck = new CardDeck(name, `${tableId}:deck:${name}`);
-    broadcast(tableId, 'newDeck', name, deck.namespace.name);
-
-    // TODO: Clients should probably ask for this instead on receiving above event.
-    redis.zRange(deck.key, 0, -1).then(idStrings => {
-        if (idStrings.length > 0) {
-            deck.namespace.emit('addCards', idStrings.map(Number));
-        }
-    });
+    sendEvent(tableId, 'newDeck', name, deck.namespace.name);
     return deck;
+};
+
+export const getCards = async (tableId: string, name: string) => {
+    const key = `${tableId}:deck:${name}`;
+    const idStrings = await redis.zRange(key, 0, -1);
+    return idStrings.map(Number);
 };
 
 // A collection of cards (not necessarily a full deck, might be a discard pile, or current set of cards in hand, etc.).
@@ -89,6 +88,9 @@ export class CardDeck
         this.namespace = io.of(`/${key}`);
         redis.del(key);
     }
+
+    // TODO: Send xstream-style timestamp w/ getCards, addCards, removeCards.
+    //       Only apply deltas to known states.
 
     add = (cards: Card[]) => this.addIds(cards.map(card => card.id));
     addIds(ids: number[]) {

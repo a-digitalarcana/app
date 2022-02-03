@@ -1,4 +1,5 @@
-import { getPlayers, broadcast, broadcastMsg } from "./cardtable";
+import { getPlayers, broadcastMsg } from "./cardtable";
+import { sendEvent } from "./connection";
 import { hasOwned } from "./cards";
 import { sleep } from "./utils";
 import { redis, RedisClientType } from "./server";
@@ -26,12 +27,12 @@ export abstract class CardGame
     constructor(tableId: string) {
         this._tableId = tableId;
         this.sub = redis.duplicate();
-        this.sub.connect();
-        this.sub.subscribe(`${tableId}:drawCard`, (player) => {
-            if (this._onDrawCard) {
-                this._onDrawCard(player);
-            }
-        });
+        this.sub.connect().then(() =>
+            this.sub.subscribe(`${tableId}:drawCard`, (player) => {
+                if (this._onDrawCard) {
+                    this._onDrawCard(player);
+                }
+            }));
     }
 
     async begin() {
@@ -48,7 +49,7 @@ export abstract class CardGame
             return false;
         }
 
-        broadcast(this.tableId, 'beginGame', name);
+        sendEvent(this.tableId, 'beginGame', name);
 
         // Give players a chance to query their cards (server-side)
         for (let i = 0; i < 5; i++) {
