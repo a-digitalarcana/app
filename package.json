@@ -7,7 +7,7 @@
     "@airgap/beacon-sdk": "^2.3.9",
     "@pinata/sdk": "^1.1.23",
     "@taquito/beacon-wallet": "^11.2.0",
-    "@taquito/signer": "^11.1.0",
+    "@taquito/signer": "^11.2.0",
     "@taquito/taquito": "^11.2.0",
     "@testing-library/jest-dom": "^5.16.2",
     "@testing-library/react": "^12.1.2",
