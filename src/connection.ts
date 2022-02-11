@@ -1,4 +1,4 @@
-import { Card, getCards } from "./cards";
+import { Card } from "./cards";
 import { newTable, beginGame, resumeGame, broadcastMsg } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
@@ -147,13 +147,6 @@ export class Connection
         socket.on('drawCard', () => {
             if (this.tableId) {
                 redis.publish(`${this.tableId}:drawCard`, this.userId);
-            }
-        });
-
-        socket.on('getCards', async (name: string) => {
-            if (this.tableId) {
-                const cards = await getCards(this.tableId, name);
-                this.socket.emit('setCards', name, cards);
             }
         });
     }

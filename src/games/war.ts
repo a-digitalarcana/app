@@ -1,6 +1,6 @@
 import { CardGame } from "../cardgame";
-import { Card, newDeck, getShuffledDeck } from "../cards";
-import { broadcastMsg, revealCards } from "../cardtable";
+import { Card, initDeck, getShuffledDeck } from "../cards";
+import { broadcastMsg, revealCard } from "../cardtable";
 import { allCards, minorCards, totalMinor } from "../tarot";
 import { getUserName, sendEvent } from "../connection";
 import { sleep } from "../utils";
@@ -21,13 +21,14 @@ export class War extends CardGame
         const playerB = this.players[1];
         assert(playerA != playerB);
 
+        // TODO: Store decks in table, send initial state on connect.
         const [deckA, deckB, playedA, playedB, wonA, wonB] = await Promise.all([
-            newDeck(this.tableId, 'DeckA'),
-            newDeck(this.tableId, 'DeckB'),
-            newDeck(this.tableId, 'PlayedA'),
-            newDeck(this.tableId, 'PlayedB'),
-            newDeck(this.tableId, 'WonA'),
-            newDeck(this.tableId, 'WonB'),
+            initDeck(this.tableId, 'DeckA'),
+            initDeck(this.tableId, 'DeckB'),
+            initDeck(this.tableId, 'PlayedA'),
+            initDeck(this.tableId, 'PlayedB'),
+            initDeck(this.tableId, 'WonA'),
+            initDeck(this.tableId, 'WonB'),
         ]);
 
         let cardA: Card | null = null;
@@ -57,20 +58,18 @@ export class War extends CardGame
             // Select a card if haven't already
             if (player === playerA) {
                 if (cardA === null) {
-                    cardA = await deckA.drawCard();
+                    cardA = await deckA.drawCard(playedA);
                     if (cardA != null) {
-                        playedA.add([cardA]);
-                        revealCards(this.tableId, [cardA]);
+                        revealCard(this.tableId, cardA);
                         const name = await getUserName(playerA);
                         broadcastMsg(this.tableId, `${name} played ${cards[cardA.value]}`);
                     }
                 }
             } else {
                 if (cardB === null) {
-                    cardB = await deckB.drawCard();
+                    cardB = await deckB.drawCard(playedB);
                     if (cardB != null) {
-                        playedB.add([cardB]);
-                        revealCards(this.tableId, [cardB]);
+                        revealCard(this.tableId, cardB);
                         const name = await getUserName(playerB);
                         broadcastMsg(this.tableId, `${name} played ${cards[cardB.value]}`);
                     }
@@ -83,11 +82,11 @@ export class War extends CardGame
                 const valueA = getValue(cardA);
                 const valueB = getValue(cardB);
                 if (valueA > valueB) {
-                    wonA.transferAllFrom([playedA, playedB]);
+                    wonA.moveAllFrom([playedA, playedB]);
                     const name = await getUserName(playerA);
                     broadcastMsg(this.tableId, `${name} wins round`);
                 } else if (valueB > valueA) {
-                    wonB.transferAllFrom([playedA, playedB]);
+                    wonB.moveAllFrom([playedA, playedB]);
                     const name = await getUserName(playerB);
                     broadcastMsg(this.tableId, `${name} wins round`);
                 } else {
@@ -114,6 +113,7 @@ export class War extends CardGame
 
         await sleep(500); // TODO: Don't rely on this
 
+        // TODO: add becomes init? (then only allow move ops)
         deckA.add(await getShuffledDeck(playerA));
         deckB.add(await getShuffledDeck(playerB));
 

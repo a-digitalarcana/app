@@ -97,6 +97,7 @@ export const broadcastMsg = async (tableId: string, text: string, exclude?: stri
     redis.xAdd(`${tableId}:chat`, '*', {msg});
 };
 
+export const revealCard = (tableId: string, card: Card) => revealCards(tableId, [card]);
 export const revealCards = (tableId: string, cards: Card[]) => {
     sendEvent(tableId, 'revealCards', cards);
 };

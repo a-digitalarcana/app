@@ -50,7 +50,9 @@
     "test-client": "react-scripts test",
     "build": "react-scripts build",
     "test": "c8 ava",
+    "test-dev": "npx ava --watch",
     "eject": "react-scripts eject",
+    "redis-restart": "sudo service redis-server restart",
     "server-dev": "NODE_ENV=development nodemon --ignore sets/ ./src/server.ts"
   },
   "eslintConfig": {
