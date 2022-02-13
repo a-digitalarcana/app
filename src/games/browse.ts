@@ -2,7 +2,6 @@ import { CardGame } from "../cardgame";
 import { getShuffledDeck, initDeck } from "../cards";
 import { revealCard } from "../cardtable";
 import { sendEvent } from "../connection";
-import { sleep } from "../utils";
 
 export class Browse extends CardGame
 {
@@ -10,8 +9,8 @@ export class Browse extends CardGame
     getMinPlayers() {return 1;}
     getMaxPlayers() {return 1;}
 
-    async begin() {
-        if (!await super.begin()) {
+    async begin(initialSetup: boolean) {
+        if (!await super.begin(initialSetup)) {
             return false;
         }
 
@@ -32,11 +31,13 @@ export class Browse extends CardGame
             }
         });
 
-        await sleep(500); // TODO: Don't rely on this
-
         const player = this.players[0];
-        deck.add(await getShuffledDeck(player));
+        if (initialSetup) {
+            deck.add(await getShuffledDeck(player));
+        }
+
         sendEvent(player, 'setDrawPile', deck.name);
+
         console.log("GO");
         return true;
     }

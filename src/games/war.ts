@@ -1,5 +1,5 @@
 import { CardGame } from "../cardgame";
-import { Card, initDeck, getShuffledDeck } from "../cards";
+import { Card, initDeck, getShuffledDeck, getCards, getCard } from "../cards";
 import { broadcastMsg, revealCard } from "../cardtable";
 import { allCards, minorCards, totalMinor } from "../tarot";
 import { getUserName, sendEvent } from "../connection";
@@ -12,8 +12,8 @@ export class War extends CardGame
     getMinPlayers() {return 2;}
     getMaxPlayers() {return 2;}
 
-    async begin() {
-        if (!await super.begin()) {
+    async begin(initialSetup: boolean) {
+        if (!await super.begin(initialSetup)) {
             return false;
         }
 
@@ -31,11 +31,20 @@ export class War extends CardGame
             initDeck(this.tableId, 'WonB'),
         ]);
 
-        let cardA: Card | null = null;
-        let cardB: Card | null = null;
+        const getLastPlayed = async () => {
+            const [cardsA, cardsB] = await Promise.all([
+                getCards(this.tableId, playedA.name),
+                getCards(this.tableId, playedB.name),
+            ]);
+            if (cardsA.ids.length > cardsB.ids.length) {
+                return [await getCard(cardsA.ids[cardsA.ids.length - 1]), null];
+            } else if (cardsB.ids.length > cardsA.ids.length) {
+                return [null, await getCard(cardsB.ids[cardsB.ids.length - 1])];
+            }
+            return [null, null];
+        };
 
-        let scoreA = 0;
-        let scoreB = 0;
+        let [cardA, cardB] = await getLastPlayed();
 
         const cards = allCards();
 
@@ -93,29 +102,15 @@ export class War extends CardGame
                     broadcastMsg(this.tableId, "It's a tie!");
                 }
                 cardA = cardB = null;
-            }
 
-            /*
-            if (gameOver) {
-                let result = "";
-                if (scoreA === scoreB) {
-                    result = "Game ended in a tie!";
-                } else if (scoreA > scoreB) {
-                    result = `Player ${playerA.name} wins!`;
-                } else {
-                    result = `Player ${playerB.name} wins!`;
-                }
-                broadcastMsg(this.tableId, result);
-                sub.disconnect();
+                // TODO: Handle game over state.
             }
-            */
         });
 
-        await sleep(500); // TODO: Don't rely on this
-
-        // TODO: add becomes init? (then only allow move ops)
-        deckA.add(await getShuffledDeck(playerA));
-        deckB.add(await getShuffledDeck(playerB));
+        if (initialSetup) {
+            deckA.add(await getShuffledDeck(playerA));
+            deckB.add(await getShuffledDeck(playerB));
+        }
 
         sendEvent(playerA, 'setDrawPile', deckA.name);
         sendEvent(playerB, 'setDrawPile', deckB.name);

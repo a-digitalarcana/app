@@ -56,19 +56,24 @@ export const getOwned = async (walletAddress: string) => {
 };
 
 export const initDeck = async (tableId: string, name: string) => {
+    redis.sAdd(`${tableId}:decks`, name);
     const key = `${tableId}:deck:${name}`;
     const cards = await redis.zRangeWithScores(key, 0, -1);
     const maxScore = (cards.length > 0) ? cards[cards.length - 1].score : 0;
     const deck = new CardDeck(name, key, tableId, maxScore);
-    const cardIds = cards.map(card => Number(card.value));
-    sendEvent(tableId, 'initDeck', key, cardIds);
+    const ids = cards.map(card => Number(card.value));
+    sendEvent(tableId, 'initDeck', key, ids);
     return deck;
+};
+
+export const getDecks = async (tableId: string) => {
+    return await redis.sMembers(`${tableId}:decks`);
 };
 
 export const getCards = async (tableId: string, name: string) => {
     const key = `${tableId}:deck:${name}`;
     const idStrings = await redis.zRange(key, 0, -1);
-    return idStrings.map(Number);
+    return {key, ids: idStrings.map(Number)};
 };
 
 // A collection of cards (not necessarily a full deck, might be a discard pile, or current set of cards in hand, etc.).

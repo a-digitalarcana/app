@@ -28,7 +28,7 @@ export const beginGame = (name: string, tableId: string) => {
     // Cache name of game.
     redis.hSet(tableId, 'game', name);
 
-    game.begin();
+    game.begin(true);
 };
 
 export const resumeGame = async (tableId: string) => {
@@ -49,8 +49,7 @@ export const resumeGame = async (tableId: string) => {
 
     games[tableId] = game;
 
-    // TODO: Setup callbacks, without creating new decks, etc.
-    game.begin();
+    game.begin(false);
 };
 
 
