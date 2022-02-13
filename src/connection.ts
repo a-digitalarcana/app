@@ -1,4 +1,4 @@
-import { Card, getCards } from "./cards";
+import { Card, getCards, getDecks } from "./cards";
 import { newTable, beginGame, resumeGame, broadcastMsg } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
@@ -50,7 +50,15 @@ export class Connection
             const stream = redis.duplicate();
             await stream.connect();
     
-            const ids: any = {};
+            const idsKey = `${this.userId}:ids`;
+            const ids = await redis.hGetAll(idsKey);
+
+            // TODO: Replay recent chat only?
+            for (const id in ids) {
+                if (id.endsWith(':chat')) {
+                    ids[id] = '0-0';
+                }
+            }
 
             while (this.connected) {
 
@@ -67,6 +75,7 @@ export class Connection
                 response?.forEach(stream => {
                     stream.messages.forEach(msg => {
                         this.handleEvent(msg.message.msg);
+                        redis.hSet(idsKey, stream.name, msg.id);
                         ids[stream.name] = msg.id;
                     });
                 });
@@ -149,13 +158,6 @@ export class Connection
                 redis.publish(`${this.tableId}:drawCard`, this.userId);
             }
         });
-
-        socket.on('getCards', async (name: string) => {
-            if (this.tableId) {
-                const cards = await getCards(this.tableId, name);
-                this.socket.emit('setCards', name, cards);
-            }
-        });
     }
 
     setWaiting(game: string) {
@@ -188,7 +190,23 @@ export class Connection
 
     async setTable(tableId: string) {
         this.tableId = tableId;
+        this.socket.emit('setTable', tableId);
+
+        // Send initial deck state
+        getDecks(tableId).then(decks => decks.forEach(deck => {
+            getCards(tableId, deck).then(cards => {
+                this.socket.emit('initDeck', cards.key, cards.ids);
+            });
+        }));
+
         resumeGame(tableId);
+
+        redis.get(`${tableId}:${this.userId}:draw`)
+            .then(deck => deck && this.socket.emit('setDrawPile', deck));
+
+        redis.zRange(`${tableId}:${this.userId}:cards`, 0, -1)
+            .then(cards => cards && this.socket.emit('revealCards',
+                cards.map(card => JSON.parse(card))));
     }
 
     revealCards(cards: Card[]) {
@@ -201,9 +219,18 @@ export class Connection
             return;
         }
         switch (data.event) {
-            case '': break;
-            case 'setTable': this.setTable(data.args[0]); break;
-            default: this.socket.emit(data.event, ...data.args); break;
+            case '': return; // filter empty messages (used to unblock msg handler in setWallet)
+            case 'setTable': this.setTable(data.args[0]); return;
+            case 'setDrawPile':
+                redis.set(`${this.tableId}:${this.userId}:draw`, data.args[0]);
+                break;
+            case 'revealCards':
+                const cards = data.args[0] as Card[];
+                redis.zAdd(`${this.tableId}:${this.userId}:cards`, cards.map(card => (
+                    {score: card.id, value: JSON.stringify(card)}
+                )));
+                break;
         }
+        this.socket.emit(data.event, ...data.args);
     }
 }

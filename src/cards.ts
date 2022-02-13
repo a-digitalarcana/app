@@ -1,11 +1,8 @@
 import { strict as assert } from "assert";
-import { Namespace } from "socket.io";
 import { totalCards } from "./tarot";
 import { shuffle } from "./utils";
-import { io, redis } from "./server";
+import { redis } from "./server";
 import { sendEvent } from "./connection";
-
-// TODO: Have Unity connect to redis to get deck info and register for changes? (https://redis.io/clients#c-sharp)
 
 export type Card = {
     id: number,         // uniquely identifies this card w/o giving away any information concerning it
@@ -58,16 +55,25 @@ export const getOwned = async (walletAddress: string) => {
     return idStrings.map(Number);
 };
 
-export const newDeck = async (tableId: string, name: string) => {
-    const deck = new CardDeck(name, `${tableId}:deck:${name}`);
-    sendEvent(tableId, 'newDeck', name, deck.namespace.name);
+export const initDeck = async (tableId: string, name: string) => {
+    redis.sAdd(`${tableId}:decks`, name);
+    const key = `${tableId}:deck:${name}`;
+    const cards = await redis.zRangeWithScores(key, 0, -1);
+    const maxScore = (cards.length > 0) ? cards[cards.length - 1].score : 0;
+    const deck = new CardDeck(name, key, tableId, maxScore);
+    const ids = cards.map(card => Number(card.value));
+    sendEvent(tableId, 'initDeck', key, ids);
     return deck;
+};
+
+export const getDecks = async (tableId: string) => {
+    return await redis.sMembers(`${tableId}:decks`);
 };
 
 export const getCards = async (tableId: string, name: string) => {
     const key = `${tableId}:deck:${name}`;
     const idStrings = await redis.zRange(key, 0, -1);
-    return idStrings.map(Number);
+    return {key, ids: idStrings.map(Number)};
 };
 
 // A collection of cards (not necessarily a full deck, might be a discard pile, or current set of cards in hand, etc.).
@@ -79,65 +85,75 @@ export class CardDeck
     _key: string;
     get key() {return this._key;}
 
-    namespace: Namespace; // socket.io
-    maxIndex: number = 0;
+    _tableId: string;
+    get tableId() {return this._tableId;}
 
-    constructor(name: string, key: string) {
+    _maxScore: number;
+
+    constructor(name: string, key: string, tableId: string, maxScore: number) {
         this._name = name;
         this._key = key;
-        this.namespace = io.of(`/${key}`);
-        redis.del(key);
+        this._tableId = tableId;
+        this._maxScore = maxScore;
     }
 
-    // TODO: Send xstream-style timestamp w/ getCards, addCards, removeCards.
-    //       Only apply deltas to known states.
+    _addIds(idStrings: string[]) {
 
-    add = (cards: Card[]) => this.addIds(cards.map(card => card.id));
-    addIds(ids: number[]) {
-        const idStrings = ids.map(String);
+        // Verify ids have not already been added to deck.
         redis.zmScore(this.key, idStrings)
             .then(results => assert(!results.some(Boolean)));
 
-        redis.zAdd(this.key, idStrings.map(idString => ({score: ++this.maxIndex, value: idString})));
-        this.namespace.emit('addCards', ids);
+        // Add them to the deck.
+        redis.zAdd(this.key, idStrings.map(idString => ({score: ++this._maxScore, value: idString})));
     }
+    _removeIds(idStrings: string[]) {
 
-    remove = (cards: Card[]) => this.removeIds(cards.map(card => card.id));
-    removeIds(ids: number[]) {
-        const idStrings = ids.map(String);
+        // Verify ids currently exist in this deck.
         redis.zmScore(this.key, idStrings)
             .then(results => assert(results.every(Boolean)));
 
+        // Remove them from this deck.
         redis.zRem(this.key, idStrings);
-        this.namespace.emit('removeCards', ids);
     }
 
-    transferAllTo(dest: CardDeck) {
+    add = (cards: Card[]) => this.addIds(cards.map(card => card.id));
+    addIds(ids: number[]) {
+        this._addIds(ids.map(String));
+        sendEvent(this.tableId, 'addCards', this.key, ids);
+    }
+
+    move = (cards: Card[], to: CardDeck) => this.moveIds(cards.map(card => card.id), to);
+    moveIds(ids: number[], to: CardDeck) {
+        const idStrings = ids.map(String);
+        this._removeIds(idStrings);
+        to._addIds(idStrings);
+        sendEvent(this.tableId, 'moveCards', to.key, ids);
+    }
+    moveAll(to: CardDeck) {
         redis.zRange(this.key, 0, -1).then(idStrings => {
+            to._addIds(idStrings);
             const ids = idStrings.map(Number);
-            this.namespace.emit('removeCards', ids);
-            dest.addIds(ids);
+            sendEvent(this.tableId, 'moveCards', to.key, ids);
         });
         redis.del(this.key);
     }
-
-    transferAllFrom(decks: CardDeck[]) {
-        decks.forEach(deck => deck.transferAllTo(this));
+    moveAllFrom(decks: CardDeck[]) {
+        decks.forEach(deck => deck.moveAll(this));
     }
 
-    destroy() {
-        redis.zRange(this.key, 0, -1)
-            .then(idStrings => this.namespace.emit('removeCards', idStrings.map(Number)));
-        redis.del(this.key);
+    async drawCard(to: CardDeck) {
+        const top = await redis.zPopMin(this.key);
+        if (top) {
+            to._addIds([top.value]);
+            const id = Number(top.value);
+            sendEvent(this.tableId, 'moveCards', to.key, [id]);
+            return await getCard(id);
+        }
+        return null;
     }
 
     async numCards() {
         return await redis.zCard(this.key);
-    }
-
-    async drawCard() {
-        const top = await redis.zPopMin(this.key);
-        return top ? await getCard(Number(top.value)) : null;
     }
 }
 

@@ -35,12 +35,18 @@ export abstract class CardGame
             }));
     }
 
-    async begin() {
+    async begin(initialSetup: boolean) {
         const name = this.getName();
+        this._players = await getPlayers(this.tableId);
+
+        if (!initialSetup) {
+            console.log(`Resume Game: ${name}`);
+            return true;
+        }
+
         console.log(`Begin Game: ${name}`);
 
         // Validate number of players at table
-        this._players = await getPlayers(this.tableId);
         if (this.players.length < this.getMinPlayers() || this.players.length > this.getMaxPlayers()) {
             broadcastMsg(this.tableId, "Invalid number of players:");
             this.players.forEach((userId, index) => {
@@ -48,8 +54,6 @@ export abstract class CardGame
             });
             return false;
         }
-
-        sendEvent(this.tableId, 'beginGame', name);
 
         // Give players a chance to query their cards (server-side)
         for (let i = 0; i < 5; i++) {

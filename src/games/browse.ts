@@ -1,8 +1,7 @@
 import { CardGame } from "../cardgame";
-import { getShuffledDeck, newDeck } from "../cards";
-import { revealCards } from "../cardtable";
+import { getShuffledDeck, initDeck } from "../cards";
+import { revealCard } from "../cardtable";
 import { sendEvent } from "../connection";
-import { sleep } from "../utils";
 
 export class Browse extends CardGame
 {
@@ -10,14 +9,14 @@ export class Browse extends CardGame
     getMinPlayers() {return 1;}
     getMaxPlayers() {return 1;}
 
-    async begin() {
-        if (!await super.begin()) {
+    async begin(initialSetup: boolean) {
+        if (!await super.begin(initialSetup)) {
             return false;
         }
 
         const [deck, hand] = await Promise.all([
-            newDeck(this.tableId, 'DeckA'),
-            newDeck(this.tableId, 'HandRoot') // HandA?
+            initDeck(this.tableId, 'DeckA'),
+            initDeck(this.tableId, 'HandRoot') // HandA?
         ]);
 
         this.onDrawCard(async (player) => {
@@ -26,18 +25,19 @@ export class Browse extends CardGame
                 return;
             }
 
-            const card = await deck.drawCard();
+            const card = await deck.drawCard(hand);
             if (card != null) {
-                revealCards(this.tableId, [card]);
-                hand.add([card]);
+                revealCard(this.tableId, card);
             }
         });
 
-        await sleep(500); // TODO: Don't rely on this
-
         const player = this.players[0];
-        deck.add(await getShuffledDeck(player));
+        if (initialSetup) {
+            deck.add(await getShuffledDeck(player));
+        }
+
         sendEvent(player, 'setDrawPile', deck.name);
+
         console.log("GO");
         return true;
     }
