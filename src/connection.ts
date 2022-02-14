@@ -26,6 +26,17 @@ export class Connection
         return await getUserName(this.userId);
     }
 
+    setName(name: string) {
+        if (!this.verifyUserId()) {
+            return;
+        }
+
+        this.welcome(name);
+
+        // Cache name across sessions
+        redis.hSet(this.userId, 'name', name);
+    }
+
     welcome(name: string) {
         this.socket.emit('msg', `Welcome ${name}!`);
     }
@@ -95,6 +106,7 @@ export class Connection
             const info = await redis.hGetAll(this.userId);
             if (info.name) {
                 this.welcome(info.name);
+                this.socket.emit('userName', info.name);
             }
             if (info.table) {
                 this.setTable(info.table);
@@ -106,18 +118,15 @@ export class Connection
             sendEvent(oldId, ""); // refresh streams
         });
 
-        socket.on('userName', (name: string) => {
-            if (!this.verifyUserId()) {
-                return;
-            }
-
-            this.welcome(name);
-
-            // Cache name across sessions
-            redis.hSet(this.userId, 'name', name);
-        });
+        socket.on('userName', (name: string) => this.setName(name));
 
         socket.on('chat', async (msg: string) => {
+            if (msg.startsWith('/name ')) {
+                if (msg.length > 6) {
+                    this.setName(msg.substring(6));
+                }
+                return;
+            }
             const name = await this.getName();
             if (name) {
                 msg = `${name}: ${msg}`;
