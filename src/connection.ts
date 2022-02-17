@@ -108,6 +108,10 @@ export class Connection
                 this.welcome(info.name);
                 this.socket.emit('userName', info.name);
             }
+            if (info.pending) {
+                this.socket.emit('resumeGame', info.pending);
+                this.socket.emit('msg', "Waiting for another player...");
+            }
             if (info.table) {
                 this.setTable(info.table);
             } else {
@@ -139,7 +143,7 @@ export class Connection
             }
         });
 
-        socket.on('playOnline', async (game: string) => {
+        socket.on('playGame', async (game: string) => {
             const name = await this.getName();
             console.log(`Player ${name} wants to play ${game}`);
             if (!this.verifyUserId()) {
@@ -147,7 +151,7 @@ export class Connection
             }
 
             // See if anyone is waiting
-            const waiting = await this.getNextWaiting();
+            const waiting = await this.getNextWaiting(game);
             if (waiting) {
 
                 // New table for two
@@ -162,6 +166,14 @@ export class Connection
             }
         });
 
+        socket.on('quitGame', async (game: string) => {
+            const name = await this.getName();
+            console.log(`Player ${name} is quitting ${game}`);
+            redis.hDel(this.userId, 'pending');
+            const tableId = await newTable([this.userId]);
+            beginGame('Browse', tableId);
+        });
+
         socket.on('drawCard', () => {
             if (this.tableId) {
                 redis.publish(`${this.tableId}:drawCard`, this.userId);
@@ -171,28 +183,29 @@ export class Connection
 
     setWaiting(game: string) {
         assert(this.userId);
-        redis.lPush('pendingTable', this.userId);
-        // TODO: Track which game.
+        redis.lPush(`pending:${game}`, this.userId);
+        redis.hSet(this.userId, 'pending', game);
     }
 
-    async getNextWaiting() {
+    async getNextWaiting(game: string) {
     
         // Loop through players pending tables...
         while (true) {
-            const pending = await redis.rPop('pendingTable');
-            if (!pending) {
+            const userId = await redis.rPop(`pending:${game}`);
+            if (!userId) {
                 break;
             }
-    
-            // TODO: Filter out if not currently connected?
-    /*
-            // Skip if already found a table.
-            const table = await redis.hGet(pending, 'table');
-            if (table) {
-                continue;
+
+            // Ensure they are still waiting for this game.
+            const pending = await redis.hGet(userId, 'pending');
+            if (pending != game) {
+                break;
             }
-    */
-            return pending;
+            redis.hDel(userId, 'pending');
+
+            // TODO: Filter out if not currently connected?
+
+            return userId;
         }
         return null;
     }
@@ -208,7 +221,11 @@ export class Connection
             });
         }));
 
-        resumeGame(tableId);
+        resumeGame(tableId).then(game => {
+            if (game) {
+                this.socket.emit('resumeGame', game);
+            }
+        });
 
         redis.get(`${tableId}:${this.userId}:draw`)
             .then(deck => deck && this.socket.emit('setDrawPile', deck));

@@ -33,25 +33,25 @@ export const beginGame = (name: string, tableId: string) => {
 
 export const resumeGame = async (tableId: string) => {
 
-    // Bail if someone else already resumed.
-    if (games[tableId]) {
-        return;
-    }
-
     // Get cached name of game, if any.
     const name = await redis.hGet(tableId, 'game');
     if (!name) {
-        return;
+        return null;
     }
 
-    const game = newGame(name, tableId);
-    assert(game);
+    // Create new instance if no one else has yet.
+    if (!games[tableId]) {
 
-    games[tableId] = game;
+        const game = newGame(name, tableId);
+        assert(game);
 
-    game.begin(false);
+        games[tableId] = game;
+
+        game.begin(false);
+    }
+
+    return name;
 };
-
 
 export const newTable = async (userIds: string[]) => {
 
