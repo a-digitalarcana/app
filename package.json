@@ -25,7 +25,7 @@
     "express-rate-limit": "^6.2.1",
     "glob-parent": ">=6.0.2",
     "immer": ">=9.0.12",
-    "mongodb": "^4.3.1",
+    "mongodb": "^4.4.0",
     "nanoid": ">=3.3.1",
     "nft.storage": "^6.0.0",
     "node-fetch": ">=3.1.1",
