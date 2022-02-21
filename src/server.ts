@@ -93,6 +93,20 @@ if (process.env.NODE_ENV !== 'development') {
     app.get('/ping', (req: any, res: any) => res.send('pong'));
 }
 
+// Serve player avatars.
+const Identicon = require('identicon.js');
+app.get('/avatar/:userId', (req: any, res: any) => {
+    const userId = req.params.userId;
+    const hash = Buffer.from(userId, 'base64').toString('hex');
+    const data = new Identicon(hash, {
+        size: 64,
+        background: [11, 47, 108]
+    }).toString();
+
+    res.type('png');
+    res.end(Buffer.from(data, 'base64'));
+});
+
 server.listen(port, () => {
     console.log(`server listening on port: ${port}`)
 });
