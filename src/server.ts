@@ -4,6 +4,7 @@ import { isDevelopment } from "./utils";
 import { mintSet } from "./admin";
 import { openPack } from "./marketplace";
 import { Connection } from "./connection";
+import { getAvatar } from "./avatars";
 
 // Connect to Redis db.
 export type RedisClientType = ReturnType<typeof createClient>;
@@ -94,17 +95,10 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 // Serve player avatars.
-const Identicon = require('identicon.js');
-app.get('/avatar/:userId', (req: any, res: any) => {
-    const userId = req.params.userId;
-    const hash = Buffer.from(userId, 'base64').toString('hex');
-    const data = new Identicon(hash, {
-        size: 64,
-        background: [11, 47, 108]
-    }).toString();
-
+app.get('/avatar/:userId', async (req: any, res: any) => {
+    const png = await getAvatar(req.params.userId);
     res.type('png');
-    res.end(Buffer.from(data, 'base64'));
+    res.end(png);
 });
 
 server.listen(port, () => {

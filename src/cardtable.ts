@@ -86,6 +86,11 @@ export const getPlayers = async (tableId: string) => {
     return await redis.sMembers(`${tableId}:players`);
 };
 
+// Get the number of players at the table
+export const numPlayers = async (tableId: string) => {
+    return await redis.sCard(`${tableId}:players`);
+};
+
 // Send a message to everyone at the table (with optional exclude userId).
 export const broadcastMsg = async (tableId: string, text: string, exclude?: string) => {
     const debug = true;

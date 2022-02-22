@@ -1,5 +1,5 @@
 import { Card, getCards, getDecks } from "./cards";
-import { newTable, beginGame, resumeGame, broadcastMsg } from "./cardtable";
+import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
 import { redis } from "./server";
@@ -212,7 +212,10 @@ export class Connection
 
     async setTable(tableId: string) {
         this.tableId = tableId;
-        this.socket.emit('setTable', tableId);
+
+        // Notify client
+        const count = await numPlayers(tableId);
+        this.socket.emit('setTable', tableId, count);
 
         // Send initial deck state
         getDecks(tableId).then(decks => decks.forEach(deck => {
