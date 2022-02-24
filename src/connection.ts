@@ -1,4 +1,4 @@
-import { Card, getCards, getDecks } from "./cards";
+import { Card, getDecks, getDeckCards } from "./cards";
 import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
@@ -179,6 +179,13 @@ export class Connection
                 redis.publish(`${this.tableId}:drawCard`, this.userId);
             }
         });
+
+        socket.on('clickTable', (x: number, z: number, selected: number[]) => {
+            if (this.tableId) {
+                const args = JSON.stringify({userId: this.userId, x, z, selected});
+                redis.publish(`${this.tableId}:clickTable`, args);
+            }
+        });
     }
 
     setWaiting(game: string) {
@@ -219,7 +226,7 @@ export class Connection
 
         // Send initial deck state
         getDecks(tableId).then(decks => decks.forEach(deck => {
-            getCards(tableId, deck).then(cards => {
+            getDeckCards(tableId, deck).then(cards => {
                 this.socket.emit('initDeck', cards.key, cards.ids);
             });
         }));

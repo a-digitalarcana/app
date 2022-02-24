@@ -1,5 +1,5 @@
 import { CardGame } from "../cardgame";
-import { getShuffledDeck, initDeck } from "../cards";
+import { initDeck, getCards, getDeckName, getShuffledDeck } from "../cards";
 import { revealCard } from "../cardtable";
 import { sendEvent } from "../connection";
 
@@ -16,7 +16,7 @@ export class Browse extends CardGame
 
         const [deck, hand] = await Promise.all([
             initDeck(this.tableId, 'DeckA'),
-            initDeck(this.tableId, 'HandRoot') // HandA?
+            initDeck(this.tableId, 'Hand')
         ]);
 
         this.onDrawCard(async (player) => {
@@ -28,6 +28,13 @@ export class Browse extends CardGame
             const card = await deck.drawCard(hand);
             if (card != null) {
                 revealCard(this.tableId, card);
+            }
+        });
+
+        this.onClickTable(async (player, x, z, selected) => {
+            if (selected && selected.length > 0) {
+                const deck = await initDeck(this.tableId, getDeckName(x, z));
+                hand.moveIds(selected, deck);
             }
         });
 

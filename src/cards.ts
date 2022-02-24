@@ -30,6 +30,10 @@ export const getCard = async (id: number): Promise<Card> => {
     };
 };
 
+export const getCards = async (ids: number[]): Promise<Card[]> => {
+    return Promise.all(ids.map(id => getCard(id)));
+};
+
 export const clearOwned = (walletAddress: string) => {
     redis.del(`${walletAddress}:owned`);
 };
@@ -70,10 +74,14 @@ export const getDecks = async (tableId: string) => {
     return await redis.sMembers(`${tableId}:decks`);
 };
 
-export const getCards = async (tableId: string, name: string) => {
+export const getDeckCards = async (tableId: string, name: string) => {
     const key = `${tableId}:deck:${name}`;
     const idStrings = await redis.zRange(key, 0, -1);
     return {key, ids: idStrings.map(Number)};
+};
+
+export const getDeckName = (x: number, z: number) => {
+    return `{${x},${z}}`;
 };
 
 // A collection of cards (not necessarily a full deck, might be a discard pile, or current set of cards in hand, etc.).

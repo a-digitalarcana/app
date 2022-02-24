@@ -1,5 +1,5 @@
 import { CardGame } from "../cardgame";
-import { Card, initDeck, getShuffledDeck, getCards, getCard } from "../cards";
+import { Card, initDeck, getShuffledDeck, getDeckCards, getCard } from "../cards";
 import { broadcastMsg, revealCard } from "../cardtable";
 import { allCards, minorCards, totalMinor } from "../tarot";
 import { getUserName, sendEvent } from "../connection";
@@ -33,8 +33,8 @@ export class War extends CardGame
 
         const getLastPlayed = async () => {
             const [cardsA, cardsB] = await Promise.all([
-                getCards(this.tableId, playedA.name),
-                getCards(this.tableId, playedB.name),
+                getDeckCards(this.tableId, playedA.name),
+                getDeckCards(this.tableId, playedB.name),
             ]);
             if (cardsA.ids.length > cardsB.ids.length) {
                 return [await getCard(cardsA.ids[cardsA.ids.length - 1]), null];

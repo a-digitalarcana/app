@@ -5,6 +5,7 @@ import { sleep } from "./utils";
 import { redis, RedisClientType } from "./server";
 
 type OnDrawCardFn = (player: string) => void;
+type OnClickTableFn = (player: string, x: number, z: number, selected: number[]) => void;
 
 export abstract class CardGame
 {
@@ -14,6 +15,9 @@ export abstract class CardGame
 
     _onDrawCard: OnDrawCardFn | null = null;
     onDrawCard(fn: OnDrawCardFn) {this._onDrawCard = fn;}
+
+    _onClickTable: OnClickTableFn | null = null;
+    onClickTable(fn: OnClickTableFn) {this._onClickTable = fn;}
 
     _tableId: string;
     get tableId() {return this._tableId;}
@@ -27,12 +31,19 @@ export abstract class CardGame
     constructor(tableId: string) {
         this._tableId = tableId;
         this.sub = redis.duplicate();
-        this.sub.connect().then(() =>
+        this.sub.connect().then(() => {
             this.sub.subscribe(`${tableId}:drawCard`, (player) => {
                 if (this._onDrawCard) {
                     this._onDrawCard(player);
                 }
-            }));
+            });
+            this.sub.subscribe(`${tableId}:clickTable`, (args) => {
+                if (this._onClickTable) {
+                    const _ = JSON.parse(args);
+                    this._onClickTable(_.userId, _.x, _.z, _.selected);
+                }
+            });
+        });
     }
 
     async begin(initialSetup: boolean) {
