@@ -1,11 +1,10 @@
 import { getPlayers, broadcastMsg } from "./cardtable";
-import { sendEvent } from "./connection";
 import { hasOwned } from "./cards";
 import { sleep } from "./utils";
 import { redis, RedisClientType } from "./server";
 
-type OnDrawCardFn = (player: string) => void;
-type OnClickTableFn = (player: string, x: number, z: number, selected: number[]) => void;
+type OnDrawCardFn = (userId: string, deck: string) => void;
+type OnClickTableFn = (userId: string, x: number, z: number, selected: number[]) => void;
 
 export abstract class CardGame
 {
@@ -32,15 +31,16 @@ export abstract class CardGame
         this._tableId = tableId;
         this.sub = redis.duplicate();
         this.sub.connect().then(() => {
-            this.sub.subscribe(`${tableId}:drawCard`, (player) => {
+            this.sub.subscribe(`${tableId}:clickDeck`, (msg) => {
                 if (this._onDrawCard) {
-                    this._onDrawCard(player);
+                    const args = JSON.parse(msg);
+                    this._onDrawCard(args.userId, args.deck);
                 }
             });
-            this.sub.subscribe(`${tableId}:clickTable`, (args) => {
+            this.sub.subscribe(`${tableId}:clickTable`, (msg) => {
                 if (this._onClickTable) {
-                    const _ = JSON.parse(args);
-                    this._onClickTable(_.userId, _.x, _.z, _.selected);
+                    const args = JSON.parse(msg);
+                    this._onClickTable(args.userId, args.x, args.z, args.selected);
                 }
             });
         });

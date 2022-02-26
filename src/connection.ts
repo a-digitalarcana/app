@@ -174,18 +174,17 @@ export class Connection
             beginGame('Browse', tableId);
         });
 
-        socket.on('drawCard', () => {
-            if (this.tableId) {
-                redis.publish(`${this.tableId}:drawCard`, this.userId);
-            }
-        });
-
+        socket.on('clickDeck', (deck: string) => this.tableAction('clickDeck', {deck}));
         socket.on('clickTable', (x: number, z: number, selected: number[]) => {
-            if (this.tableId) {
-                const args = JSON.stringify({userId: this.userId, x, z, selected});
-                redis.publish(`${this.tableId}:clickTable`, args);
-            }
+            this.tableAction('clickTable', {x, z, selected});
         });
+    }
+
+    tableAction(action: string, args: any) {
+        if (this.tableId) {
+            args.userId = this.userId;
+            redis.publish(`${this.tableId}:${action}`, JSON.stringify(args));
+        }
     }
 
     setWaiting(game: string) {
