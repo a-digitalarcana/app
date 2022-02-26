@@ -1,7 +1,8 @@
 import { CardGame } from "../cardgame";
-import { initDeck, getCards, getDecks, getDeckName, getShuffledDeck } from "../cards";
+import { initDeck, getDecks, getDeckName, getShuffledDeck } from "../cards";
 import { revealCard } from "../cardtable";
 import { sendEvent } from "../connection";
+import { strict as assert } from "assert";
 
 export class Browse extends CardGame
 {
@@ -14,20 +15,14 @@ export class Browse extends CardGame
             return false;
         }
 
-        const [deck, hand] = await Promise.all([
-            initDeck(this.tableId, 'DeckA'),
-            initDeck(this.tableId, 'Hand')
-        ]);
+        const names = initialSetup ? ['DeckA', 'Hand'] : await getDecks(this.tableId);
+        const decks = await Promise.all(names.map(name => initDeck(this.tableId, name)));
 
-        const decks: any = {};
-        decks[deck.name] = deck;
-        decks[hand.name] = hand;
-        const names = await getDecks(this.tableId);
-        for (let name of names) {
-            if (!decks.hasOwnProperty(name)) {
-                decks[name] = await initDeck(this.tableId, name);
-            }
-        }
+        const dir: any = {};
+        decks.forEach(deck => dir[deck.name] = deck);
+
+        const hand = dir['Hand'];
+        assert(hand);
 
         this.onDrawCard(async (player, from) => {
 
@@ -35,7 +30,7 @@ export class Browse extends CardGame
                 return;
             }
 
-            const deck = decks[from];
+            const deck = dir[from];
             if (deck) {
                 const card = await deck.drawCard(hand);
                 if (card != null) {
@@ -48,10 +43,14 @@ export class Browse extends CardGame
             if (selected && selected.length > 0) {
                 const deck = await initDeck(this.tableId, getDeckName(x, z));
                 hand.moveIds(selected, deck);
+                dir[deck.name] = deck;
             }
         });
 
         const player = this.players[0];
+        const deck = dir['DeckA'];
+        assert(deck);
+
         if (initialSetup) {
             deck.add(await getShuffledDeck(player));
         }
