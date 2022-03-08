@@ -75,7 +75,7 @@
     ]
   },
   "devDependencies": {
-    "ava": "^4.0.1"
+    "ava": "^4.1.0"
   },
   "ava": {
     "extensions": [
