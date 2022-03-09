@@ -1,6 +1,7 @@
 import test from 'ava';
 import { createClient } from "redis";
 import { initDeck, registerCard } from "../cards";
+import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
 
 const tableId = "table:test";
 
@@ -55,4 +56,16 @@ test('move cards', async t => {
     };
 
     return Promise.all([1, 2, 3, 4, 5, 6, null].map(value => verifyCard(value)));
+});
+
+test('players', async t => {
+    const userIds = ["PlayerA", "PlayerB"];
+    const tableId = await newTable(userIds);
+    t.is(await numPlayers(tableId), 2);
+    const [seatA, seatB] = await Promise.all(
+        userIds.map(userId => getPlayerSeat(tableId, userId))
+    );
+    t.is(seatA, "A");
+    t.is(seatB, "B");
+    t.not(await getPlayerSeat(tableId, "PlayerC"), "C");
 });

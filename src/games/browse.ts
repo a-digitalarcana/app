@@ -55,8 +55,6 @@ export class Browse extends CardGame
             deck.add(await getShuffledDeck(player));
         }
 
-        sendEvent(player, 'setDrawPile', deck.name);
-
         console.log("GO");
         return true;
     }

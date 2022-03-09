@@ -1,5 +1,5 @@
 import { Card, getDecks, getDeckCards } from "./cards";
-import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers } from "./cardtable";
+import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers, getPlayerSeat } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
 import { redis } from "./server";
@@ -220,8 +220,12 @@ export class Connection
         this.tableId = tableId;
 
         // Notify client
-        const count = await numPlayers(tableId);
-        this.socket.emit('setTable', tableId, count);
+        const [seat, count] = await Promise.all([
+            getPlayerSeat(tableId, this.userId),
+            numPlayers(tableId)
+        ]);
+
+        this.socket.emit('setTable', tableId, seat, count);
 
         // Send initial deck state
         getDecks(tableId).then(decks => decks.forEach(deck => {
@@ -235,9 +239,6 @@ export class Connection
                 this.socket.emit('resumeGame', game);
             }
         });
-
-        redis.get(`${tableId}:${this.userId}:draw`)
-            .then(deck => deck && this.socket.emit('setDrawPile', deck));
 
         redis.zRange(`${tableId}:${this.userId}:cards`, 0, -1)
             .then(cards => cards && this.socket.emit('revealCards',
@@ -256,9 +257,6 @@ export class Connection
         switch (data.event) {
             case '': return; // filter empty messages (used to unblock msg handler in setWallet)
             case 'setTable': this.setTable(data.args[0]); return;
-            case 'setDrawPile':
-                redis.set(`${this.tableId}:${this.userId}:draw`, data.args[0]);
-                break;
             case 'revealCards':
                 const cards = data.args[0] as Card[];
                 redis.zAdd(`${this.tableId}:${this.userId}:cards`, cards.map(card => (

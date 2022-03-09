@@ -61,7 +61,9 @@ export const newTable = async (userIds: string[]) => {
     };
 
     const tableId = await getNextTableId();
-    redis.sAdd(`${tableId}:players`, userIds);
+    redis.zAdd(`${tableId}:players`, userIds.map((userId, index) => (
+        {score: index, value: userId}
+    )));
     userIds.forEach((userId, index) => {
 
         // TODO: Remove userId from prev table's players list
@@ -83,12 +85,24 @@ export const newTable = async (userIds: string[]) => {
 
 // Get the wallet addresses for the players at the table
 export const getPlayers = async (tableId: string) => {
-    return await redis.sMembers(`${tableId}:players`);
+    return await redis.zRange(`${tableId}:players`, 0, -1);
 };
 
 // Get the number of players at the table
 export const numPlayers = async (tableId: string) => {
-    return await redis.sCard(`${tableId}:players`);
+    return await redis.zCard(`${tableId}:players`);
+};
+
+// Get the player's position at the table (A, B, etc.)
+export const getPlayerSeat = async (tableId: string, userId: string) => {
+    const index = await redis.zScore(`${tableId}:players`, userId);
+    return (index != undefined) ? String.fromCharCode(65 + Number(index)) : 'undefined';
+};
+
+// Get the userId for a given table slot (0=A, 1=B, etc.)
+export const getPlayerBySlot = async (tableId: string, slot: number) => {
+    const results = await redis.zRangeByScore(`${tableId}:players`, slot, slot);
+    return (results.length > 0) ? results[0] : null;
 };
 
 // Send a message to everyone at the table (with optional exclude userId).

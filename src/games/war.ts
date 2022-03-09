@@ -112,9 +112,6 @@ export class War extends CardGame
             deckB.add(await getShuffledDeck(playerB));
         }
 
-        sendEvent(playerA, 'setDrawPile', deckA.name);
-        sendEvent(playerB, 'setDrawPile', deckB.name);
-
         console.log("GO");
         return true;
     }
