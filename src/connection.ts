@@ -174,7 +174,9 @@ export class Connection
             beginGame('Browse', tableId);
         });
 
-        socket.on('clickDeck', (deck: string) => this.tableAction('clickDeck', {deck}));
+        socket.on('clickDeck', (deck: string, selected: number[]) => {
+            this.tableAction('clickDeck', {deck, selected});
+        });
         socket.on('clickTable', (x: number, z: number, selected: number[]) => {
             this.tableAction('clickTable', {x, z, selected});
         });

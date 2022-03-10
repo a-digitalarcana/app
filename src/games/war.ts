@@ -57,7 +57,7 @@ export class War extends CardGame
         }
 
         // Hook up client commands
-        this.onDrawCard(async (player, from) => {
+        this.onClickDeck(async (player, name, selected) => {
 
             // Wait for board to clear
             if (cardA && cardB) {
@@ -66,7 +66,7 @@ export class War extends CardGame
 
             // Select a card if haven't already
             if (player === playerA) {
-                if (cardA === null && from === deckA.name) {
+                if (cardA === null && name === deckA.name) {
                     cardA = await deckA.drawCard(playedA);
                     if (cardA != null) {
                         revealCard(this.tableId, cardA);
@@ -75,7 +75,7 @@ export class War extends CardGame
                     }
                 }
             } else {
-                if (cardB === null && from === deckB.name) {
+                if (cardB === null && name === deckB.name) {
                     cardB = await deckB.drawCard(playedB);
                     if (cardB != null) {
                         revealCard(this.tableId, cardB);

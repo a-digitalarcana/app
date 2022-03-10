@@ -3,7 +3,7 @@ import { hasOwned } from "./cards";
 import { sleep } from "./utils";
 import { redis, RedisClientType } from "./server";
 
-type OnDrawCardFn = (userId: string, deck: string) => void;
+type OnClickDeckFn = (userId: string, deck: string, selected: number[]) => void;
 type OnClickTableFn = (userId: string, x: number, z: number, selected: number[]) => void;
 
 export abstract class CardGame
@@ -12,8 +12,8 @@ export abstract class CardGame
     abstract getMinPlayers(): number;
     abstract getMaxPlayers(): number;
 
-    _onDrawCard: OnDrawCardFn | null = null;
-    onDrawCard(fn: OnDrawCardFn) {this._onDrawCard = fn;}
+    _onClickDeck: OnClickDeckFn | null = null;
+    onClickDeck(fn: OnClickDeckFn) {this._onClickDeck = fn;}
 
     _onClickTable: OnClickTableFn | null = null;
     onClickTable(fn: OnClickTableFn) {this._onClickTable = fn;}
@@ -32,9 +32,9 @@ export abstract class CardGame
         this.sub = redis.duplicate();
         this.sub.connect().then(() => {
             this.sub.subscribe(`${tableId}:clickDeck`, (msg) => {
-                if (this._onDrawCard) {
+                if (this._onClickDeck) {
                     const args = JSON.parse(msg);
-                    this._onDrawCard(args.userId, args.deck);
+                    this._onClickDeck(args.userId, args.deck, args.selected);
                 }
             });
             this.sub.subscribe(`${tableId}:clickTable`, (msg) => {

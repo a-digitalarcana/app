@@ -24,13 +24,23 @@ export class Browse extends CardGame
         const hand = dir['Hand'];
         assert(hand);
 
-        this.onDrawCard(async (player, from) => {
+        this.onClickDeck(async (player, name, selected) => {
 
+            // Add selected cards to deck.
+            if (selected && selected.length > 0) {
+                if (name in dir) {
+                    hand.moveIds(selected, dir[name]);
+                }
+                return;
+            }
+
+            // Limit holding 24 cards.
             if (await hand.numCards() >= 24 ) {
                 return;
             }
 
-            const deck = dir[from];
+            // Draw card from deck.
+            const deck = dir[name];
             if (deck) {
                 const card = await deck.drawCard(hand);
                 if (card != null) {
@@ -39,6 +49,7 @@ export class Browse extends CardGame
             }
         });
 
+        // Create a new deck from selected cards.
         this.onClickTable(async (player, x, z, selected) => {
             if (selected && selected.length > 0) {
                 const deck = await initDeck(this.tableId, getDeckName(x, z));
