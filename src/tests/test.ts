@@ -58,6 +58,21 @@ test('move cards', async t => {
     return Promise.all([1, 2, 3, 4, 5, 6, null].map(value => verifyCard(value)));
 });
 
+test('add cards to start', async t => {
+    const deck = await initDeck(tableId, "test-add-start");
+    const cards = await registerCards([1, 2, 3]);
+    deck.add([cards[0]], true);
+    deck.add([cards[1]]);
+    deck.add([cards[2]], true);
+
+    const verifyCard = async (value: number) => {
+        const card = await deck.drawCard(deck);
+        t.is(card?.value, value);
+    };
+
+    return Promise.all([3, 1, 2].map(value => verifyCard(value)));
+});
+
 test('players', async t => {
     const userIds = ["PlayerA", "PlayerB"];
     const tableId = await newTable(userIds);

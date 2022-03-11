@@ -63,8 +63,9 @@ export const initDeck = async (tableId: string, name: string) => {
     redis.sAdd(`${tableId}:decks`, name);
     const key = `${tableId}:deck:${name}`;
     const cards = await redis.zRangeWithScores(key, 0, -1);
-    const maxScore = (cards.length > 0) ? cards[cards.length - 1].score : 0;
-    const deck = new CardDeck(name, key, tableId, maxScore);
+    const [minScore, maxScore] = (cards.length > 0) ?
+        [cards[0].score, cards[cards.length - 1].score] : [0, 0];
+    const deck = new CardDeck(name, key, tableId, minScore, maxScore);
     const ids = cards.map(card => Number(card.value));
     sendEvent(tableId, 'initDeck', key, ids);
     return deck;
@@ -96,23 +97,34 @@ export class CardDeck
     _tableId: string;
     get tableId() {return this._tableId;}
 
+    _minScore: number;
     _maxScore: number;
 
-    constructor(name: string, key: string, tableId: string, maxScore: number) {
+    constructor(name: string, key: string, tableId: string, minScore: number, maxScore: number) {
         this._name = name;
         this._key = key;
         this._tableId = tableId;
+        this._minScore = minScore;
         this._maxScore = maxScore;
     }
 
-    _addIds(idStrings: string[]) {
+    _addIds(idStrings: string[], toStart = false) {
 
         // Verify ids have not already been added to deck.
         redis.zmScore(this.key, idStrings)
             .then(results => assert(!results.some(Boolean)));
 
+        let i: number;
+        if (toStart) {
+            this._minScore -= idStrings.length;
+            i = this._minScore;
+        } else {
+            i = this._maxScore;
+            this._maxScore += idStrings.length;
+        }
+
         // Add them to the deck.
-        redis.zAdd(this.key, idStrings.map(idString => ({score: ++this._maxScore, value: idString})));
+        redis.zAdd(this.key, idStrings.map(idString => ({score: i++, value: idString})));
     }
     _removeIds(idStrings: string[]) {
 
@@ -124,29 +136,29 @@ export class CardDeck
         redis.zRem(this.key, idStrings);
     }
 
-    add = (cards: Card[]) => this.addIds(cards.map(card => card.id));
-    addIds(ids: number[]) {
-        this._addIds(ids.map(String));
+    add = (cards: Card[], toStart = false) => this.addIds(cards.map(card => card.id), toStart);
+    addIds(ids: number[], toStart = false) {
+        this._addIds(ids.map(String), toStart);
         sendEvent(this.tableId, 'addCards', this.key, ids);
     }
 
-    move = (cards: Card[], to: CardDeck) => this.moveIds(cards.map(card => card.id), to);
-    moveIds(ids: number[], to: CardDeck) {
+    move = (cards: Card[], to: CardDeck, toStart = false) => this.moveIds(cards.map(card => card.id), to, toStart);
+    moveIds(ids: number[], to: CardDeck, toStart = false) {
         const idStrings = ids.map(String);
         this._removeIds(idStrings);
-        to._addIds(idStrings);
+        to._addIds(idStrings, toStart);
         sendEvent(this.tableId, 'moveCards', to.key, ids);
     }
-    moveAll(to: CardDeck) {
+    moveAll(to: CardDeck, toStart = false) {
         redis.zRange(this.key, 0, -1).then(idStrings => {
-            to._addIds(idStrings);
+            to._addIds(idStrings, toStart);
             const ids = idStrings.map(Number);
             sendEvent(this.tableId, 'moveCards', to.key, ids);
         });
         redis.del(this.key);
     }
-    moveAllFrom(decks: CardDeck[]) {
-        decks.forEach(deck => deck.moveAll(this));
+    moveAllFrom(decks: CardDeck[], toStart = false) {
+        decks.forEach(deck => deck.moveAll(this, toStart));
     }
 
     async drawCard(to: CardDeck) {

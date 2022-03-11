@@ -29,7 +29,7 @@ export class Browse extends CardGame
             // Add selected cards to deck.
             if (selected && selected.length > 0) {
                 if (name in dir) {
-                    hand.moveIds(selected, dir[name]);
+                    hand.moveIds(selected, dir[name], true);
                 }
                 return;
             }
