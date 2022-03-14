@@ -1,5 +1,5 @@
 import { Card, getDecks, getDeckCards } from "./cards";
-import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers, getPlayerSeat } from "./cardtable";
+import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers, getPlayerSlot, getPlayerSeat } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
 import { redis } from "./server";
@@ -26,7 +26,7 @@ export class Connection
         return await getUserName(this.userId);
     }
 
-    setName(name: string) {
+    async setName(name: string) {
         if (!this.verifyUserId()) {
             return;
         }
@@ -35,6 +35,12 @@ export class Connection
 
         // Cache name across sessions
         redis.hSet(this.userId, 'name', name);
+
+        // Let everyone at the table know
+        if (this.tableId) {
+            sendEvent(this.tableId, 'nameChanged',
+                await getPlayerSlot(this.tableId, this.userId));
+        }
     }
 
     welcome(name: string) {

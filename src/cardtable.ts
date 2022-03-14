@@ -93,9 +93,14 @@ export const numPlayers = async (tableId: string) => {
     return await redis.zCard(`${tableId}:players`);
 };
 
+// Get the player's index at the table (0, 1, 2, etc.)
+export const getPlayerSlot = async (tableId: string, userId: string) => {
+    return await redis.zScore(`${tableId}:players`, userId);
+};
+
 // Get the player's position at the table (A, B, etc.)
 export const getPlayerSeat = async (tableId: string, userId: string) => {
-    const index = await redis.zScore(`${tableId}:players`, userId);
+    const index = await getPlayerSlot(tableId, userId);
     return (index != undefined) ? String.fromCharCode(65 + Number(index)) : 'undefined';
 };
 
@@ -103,6 +108,17 @@ export const getPlayerSeat = async (tableId: string, userId: string) => {
 export const getPlayerBySlot = async (tableId: string, slot: number) => {
     const results = await redis.zRangeByScore(`${tableId}:players`, slot, slot);
     return (results.length > 0) ? results[0] : null;
+};
+
+// Get the userId for table:tableId:slot
+export const getPlayer = async (tableIdAndSlot: string) => {
+    if (!tableIdAndSlot.startsWith('table:')) {
+        return null;
+    }
+    const i = tableIdAndSlot.lastIndexOf(':');
+    const tableId = tableIdAndSlot.substring(0, i);
+    const slot = Number(tableIdAndSlot.substring(i + 1));
+    return await getPlayerBySlot(tableId, slot);
 };
 
 // Send a message to everyone at the table (with optional exclude userId).

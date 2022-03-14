@@ -3,7 +3,8 @@ import { Server, Socket } from "socket.io";
 import { isDevelopment } from "./utils";
 import { mintSet } from "./admin";
 import { openPack } from "./marketplace";
-import { Connection } from "./connection";
+import { Connection, getUserName } from "./connection";
+import { getPlayer } from "./cardtable";
 import { getAvatar } from "./avatars";
 
 // Connect to Redis db.
@@ -93,6 +94,13 @@ if (process.env.NODE_ENV !== 'development') {
     console.log('running in development mode');
     app.get('/ping', (req: any, res: any) => res.send('pong'));
 }
+
+// Serve player names.
+app.get('/name/:userId', async (req: any, res: any) => {
+    const player = await getPlayer(req.params.userId);
+    const name = await getUserName(player ?? req.params.userId);
+    res.end(name);
+});
 
 // Serve player avatars.
 app.get('/avatar/:userId', async (req: any, res: any) => {
