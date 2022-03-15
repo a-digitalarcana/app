@@ -3,8 +3,23 @@ import { hasOwned } from "./cards";
 import { sleep } from "./utils";
 import { redis, RedisClientType } from "./server";
 
-type OnClickDeckFn = (userId: string, deck: string, selected: number[]) => void;
-type OnClickTableFn = (userId: string, x: number, z: number, selected: number[]) => void;
+interface ClickArgs {
+    userId: string;
+    selected: number[]
+    alt: boolean;
+}
+
+export interface ClickDeckArgs extends ClickArgs {
+    deck: string;
+}
+
+export interface ClickTableArgs extends ClickArgs {
+    x: number;
+    z: number;
+}
+
+type OnClickDeckFn = (args: ClickDeckArgs) => void;
+type OnClickTableFn = (args: ClickTableArgs) => void;
 
 export abstract class CardGame
 {
@@ -34,13 +49,13 @@ export abstract class CardGame
             this.sub.subscribe(`${tableId}:clickDeck`, (msg) => {
                 if (this._onClickDeck) {
                     const args = JSON.parse(msg);
-                    this._onClickDeck(args.userId, args.deck, args.selected);
+                    this._onClickDeck(args);
                 }
             });
             this.sub.subscribe(`${tableId}:clickTable`, (msg) => {
                 if (this._onClickTable) {
                     const args = JSON.parse(msg);
-                    this._onClickTable(args.userId, args.x, args.z, args.selected);
+                    this._onClickTable(args);
                 }
             });
         });

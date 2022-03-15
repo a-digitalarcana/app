@@ -8,14 +8,15 @@ export type Card = {
     id: number,         // uniquely identifies this card w/o giving away any information concerning it
     value: number,      // index into allCards or token_id % totalCards
     token_id: number,   // token_id of this card in the FA2 contract
-    ipfsUri: string     // metadata location
+    ipfsUri: string,    // metadata location
+    facing: number      // facing (even=default, odd=flipped)
 }
 
-export const registerCard = async (value: number, token_id: number = -1, ipfsUri: string = "") => {
+export const registerCard = async (value: number, token_id: number = -1, ipfsUri: string = "", facing = 0) => {
     const getNextCardId = async (): Promise<number> => {
         return await redis.incr('nextCardId');
     };
-    const card = {id: await getNextCardId(), value, token_id, ipfsUri};
+    const card = {id: await getNextCardId(), value, token_id, ipfsUri, facing};
     redis.hSet(`card:${card.id}`, card);
     return card;
 };
@@ -26,12 +27,21 @@ export const getCard = async (id: number): Promise<Card> => {
         id: JSON.parse(card.id),
         value: JSON.parse(card.value),
         token_id: JSON.parse(card.token_id),
-        ipfsUri: card.ipfsUri
+        ipfsUri: card.ipfsUri,
+        facing: JSON.parse(card.facing)
     };
 };
 
 export const getCards = async (ids: number[]): Promise<Card[]> => {
     return Promise.all(ids.map(id => getCard(id)));
+};
+
+export const flipCard = async (id: number) => {
+    redis.hIncrBy(`card:${id}`, 'facing', 1);
+};
+
+export const flipCards = async (ids: number[]) => {
+    return Promise.all(ids.map(id => flipCard(id)));
 };
 
 export const clearOwned = (walletAddress: string) => {
@@ -161,10 +171,20 @@ export class CardDeck
         decks.forEach(deck => deck.moveAll(this, toStart));
     }
 
-    async drawCard(to: CardDeck) {
+    async peekId() {
+        const top = await redis.zRange(this.key, 0, 0);
+        return (top && top.length > 0) ? Number(top[0]) : null;
+    }
+
+    async peekCard() {
+        const id = await this.peekId();
+        return id ? await getCard(id) : null;
+    }
+
+    async drawCard(to: CardDeck, toStart = false) {
         const top = await redis.zPopMin(this.key);
         if (top) {
-            to._addIds([top.value]);
+            to._addIds([top.value], toStart);
             const id = Number(top.value);
             sendEvent(this.tableId, 'moveCards', to.key, [id]);
             return await getCard(id);

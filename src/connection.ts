@@ -180,11 +180,11 @@ export class Connection
             beginGame('Browse', tableId);
         });
 
-        socket.on('clickDeck', (deck: string, selected: number[]) => {
-            this.tableAction('clickDeck', {deck, selected});
+        socket.on('clickDeck', (deck: string, selected: number[], alt: boolean) => {
+            this.tableAction('clickDeck', {deck, selected, alt});
         });
-        socket.on('clickTable', (x: number, z: number, selected: number[]) => {
-            this.tableAction('clickTable', {x, z, selected});
+        socket.on('clickTable', (x: number, z: number, selected: number[], alt: boolean) => {
+            this.tableAction('clickTable', {x, z, selected, alt});
         });
     }
 
@@ -251,10 +251,6 @@ export class Connection
         redis.zRange(`${tableId}:${this.userId}:cards`, 0, -1)
             .then(cards => cards && this.socket.emit('revealCards',
                 cards.map(card => JSON.parse(card))));
-    }
-
-    revealCards(cards: Card[]) {
-        this.socket.emit('revealCards', cards);
     }
 
     handleEvent(msg: string) {

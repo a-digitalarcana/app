@@ -1,8 +1,8 @@
-import { CardGame } from "../cardgame";
+import { CardGame, ClickDeckArgs } from "../cardgame";
 import { Card, initDeck, getShuffledDeck, getDeckCards, getCard } from "../cards";
 import { broadcastMsg, revealCard } from "../cardtable";
 import { allCards, minorCards, totalMinor } from "../tarot";
-import { getUserName, sendEvent } from "../connection";
+import { getUserName } from "../connection";
 import { sleep } from "../utils";
 import { strict as assert } from "assert";
 
@@ -57,7 +57,14 @@ export class War extends CardGame
         }
 
         // Hook up client commands
-        this.onClickDeck(async (player, name, selected) => {
+        this.onClickDeck(async (args: ClickDeckArgs) => {
+            const player = args.userId;
+            const name = args.deck;
+
+            // Do not respond to right-clicl
+            if (args.alt) {
+                return;
+            }
 
             // Wait for board to clear
             if (cardA && cardB) {

@@ -1,6 +1,6 @@
 import test from 'ava';
 import { createClient } from "redis";
-import { initDeck, registerCard } from "../cards";
+import { initDeck, registerCard, getCard, flipCard } from "../cards";
 import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
 
 const tableId = "table:test";
@@ -71,6 +71,28 @@ test('add cards to start', async t => {
     };
 
     return Promise.all([3, 1, 2].map(value => verifyCard(value)));
+});
+
+test('peek cards', async t => {
+    const deck = await initDeck(tableId, "test-peek");
+    const cards = await registerCards([1, 2, 3]);
+    t.is(await deck.peekId(), null);
+    deck.add(cards);
+    t.is(await deck.peekId(), cards[0].id);
+    deck.move([cards[1]], deck, true);
+    t.is(await deck.peekId(), cards[1].id);
+    await Promise.all([
+        deck.drawCard(deck),
+        deck.drawCard(deck)
+    ]);
+    const card = await deck.peekCard();
+    t.like(card, cards[2]);
+});
+
+test('flip card', async t => {
+    const card = await registerCard(1);
+    flipCard(card.id);
+    return getCard(card.id).then(card => t.is(card.facing, 1));
 });
 
 test('players', async t => {
