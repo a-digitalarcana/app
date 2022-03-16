@@ -1,5 +1,5 @@
 import { CardGame, ClickDeckArgs, ClickTableArgs } from "../cardgame";
-import { initDeck, getDecks, getDeckName, getShuffledDeck, flipCard } from "../cards";
+import { initDeck, getDecks, getDeckName, getShuffledDeck, flipCard, CardDeckMap, getCard, isFlipped } from "../cards";
 import { revealCard } from "../cardtable";
 import { strict as assert } from "assert";
 
@@ -17,7 +17,7 @@ export class Browse extends CardGame
         const names = initialSetup ? ['DeckA', 'Hand'] : await getDecks(this.tableId);
         const decks = await Promise.all(names.map(name => initDeck(this.tableId, name)));
 
-        const dir: any = {};
+        const dir: CardDeckMap = {};
         decks.forEach(deck => dir[deck.name] = deck);
 
         const hand = dir['Hand'];
@@ -30,11 +30,11 @@ export class Browse extends CardGame
             // Right click to flip cards.
             if (args.alt) {
                 const deck = dir[name];
-                if (deck) {
+                if (deck && deck != hand) {
                     const id = await deck.peekId();
                     if (id != null) {
                         flipCard(id);
-                        revealCard(this.tableId, id);
+                        revealCard(this.tableId, await getCard(id));
                     }
                 }
                 return;
@@ -56,8 +56,12 @@ export class Browse extends CardGame
             // Draw card from deck.
             const deck = dir[name];
             if (deck) {
-                const card = await deck.drawCard(hand);
+                let card = await deck.drawCard(hand);
                 if (card != null) {
+                    if (isFlipped(card)) {
+                        flipCard(card.id);
+                        card = await getCard(card.id);
+                    }
                     revealCard(this.tableId, card);
                 }
             }

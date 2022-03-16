@@ -1,4 +1,4 @@
-import { Card, getDecks, getDeckCards } from "./cards";
+import { Card, getDecks, getDeckCards, getCards } from "./cards";
 import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers, getPlayerSlot, getPlayerSeat } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
@@ -249,8 +249,8 @@ export class Connection
         });
 
         redis.zRange(`${tableId}:${this.userId}:cards`, 0, -1)
-            .then(cards => cards && this.socket.emit('revealCards',
-                cards.map(card => JSON.parse(card))));
+            .then(cards => cards && getCards(cards.map(Number))
+                .then(cards => this.socket.emit('revealCards', cards)));
     }
 
     handleEvent(msg: string) {
@@ -264,7 +264,7 @@ export class Connection
             case 'revealCards':
                 const cards = data.args[0] as Card[];
                 redis.zAdd(`${this.tableId}:${this.userId}:cards`, cards.map(card => (
-                    {score: card.id, value: JSON.stringify(card)}
+                    {score: card.id, value: String(card.id)}
                 )));
                 break;
         }

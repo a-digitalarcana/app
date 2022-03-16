@@ -44,6 +44,10 @@ export const flipCards = async (ids: number[]) => {
     return Promise.all(ids.map(id => flipCard(id)));
 };
 
+export const isFlipped = (card: Card) => {
+    return card.facing % 2 != 0;
+};
+
 export const clearOwned = (walletAddress: string) => {
     redis.del(`${walletAddress}:owned`);
 };
@@ -122,7 +126,7 @@ export class CardDeck
 
         // Verify ids have not already been added to deck.
         redis.zmScore(this.key, idStrings)
-            .then(results => assert(!results.some(Boolean)));
+            .then(results => assert(!results.some(Boolean), `${this.key}: ${idStrings}`));
 
         let i: number;
         if (toStart) {
@@ -140,7 +144,7 @@ export class CardDeck
 
         // Verify ids currently exist in this deck.
         redis.zmScore(this.key, idStrings)
-            .then(results => assert(results.every(Boolean)));
+            .then(results => assert(results.every(Boolean), `${this.key}: ${idStrings}`));
 
         // Remove them from this deck.
         redis.zRem(this.key, idStrings);
@@ -196,6 +200,8 @@ export class CardDeck
         return await redis.zCard(this.key);
     }
 }
+
+export type CardDeckMap = { [name: string]: CardDeck };
 
 const values = Array.from({length: totalCards}, (_, i) => i);
 
