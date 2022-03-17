@@ -1,7 +1,6 @@
-import { CardGame } from "../cardgame";
-import { initDeck, getDecks, getDeckName, getShuffledDeck } from "../cards";
+import { CardGame, ClickDeckArgs, ClickTableArgs } from "../cardgame";
+import { initDeck, getDecks, getDeckName, getShuffledDeck, CardDeckMap, getCard } from "../cards";
 import { revealCard } from "../cardtable";
-import { sendEvent } from "../connection";
 import { strict as assert } from "assert";
 
 export class Browse extends CardGame
@@ -18,13 +17,28 @@ export class Browse extends CardGame
         const names = initialSetup ? ['DeckA', 'Hand'] : await getDecks(this.tableId);
         const decks = await Promise.all(names.map(name => initDeck(this.tableId, name)));
 
-        const dir: any = {};
+        const dir: CardDeckMap = {};
         decks.forEach(deck => dir[deck.name] = deck);
 
         const hand = dir['Hand'];
         assert(hand);
 
-        this.onClickDeck(async (player, name, selected) => {
+        this.onClickDeck(async (args: ClickDeckArgs) => {
+            const name = args.deck;
+            const selected = args.selected;
+
+            // Right click to flip cards.
+            if (args.alt) {
+                const deck = dir[name];
+                if (deck && deck != hand) {
+                    const id = await deck.peekId();
+                    if (id != null) {
+                        deck.flipIds([id]);
+                        revealCard(this.tableId, await getCard(id));
+                    }
+                }
+                return;
+            }
 
             // Add selected cards to deck.
             if (selected && selected.length > 0) {
@@ -42,7 +56,7 @@ export class Browse extends CardGame
             // Draw card from deck.
             const deck = dir[name];
             if (deck) {
-                const card = await deck.drawCard(hand);
+                let card = await deck.drawCard(hand);
                 if (card != null) {
                     revealCard(this.tableId, card);
                 }
@@ -50,9 +64,10 @@ export class Browse extends CardGame
         });
 
         // Create a new deck from selected cards.
-        this.onClickTable(async (player, x, z, selected) => {
-            if (selected && selected.length > 0) {
-                const deck = await initDeck(this.tableId, getDeckName(x, z));
+        this.onClickTable(async (args: ClickTableArgs) => {
+            const selected = args.selected;
+            if (!args.alt && selected && selected.length > 0) {
+                const deck = await initDeck(this.tableId, getDeckName(args.x, args.z));
                 hand.moveIds(selected, deck);
                 dir[deck.name] = deck;
             }

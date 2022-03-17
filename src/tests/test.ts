@@ -73,6 +73,34 @@ test('add cards to start', async t => {
     return Promise.all([3, 1, 2].map(value => verifyCard(value)));
 });
 
+test('peek cards', async t => {
+    const deck = await initDeck(tableId, "test-peek");
+    const cards = await registerCards([1, 2, 3]);
+    t.is(await deck.peekId(), null);
+    deck.add(cards);
+    t.is(await deck.peekId(), cards[0].id);
+    deck.move([cards[1]], deck, true);
+    t.is(await deck.peekId(), cards[1].id);
+    await Promise.all([
+        deck.drawCard(deck),
+        deck.drawCard(deck)
+    ]);
+    const card = await deck.peekCard();
+    t.like(card, cards[2]);
+});
+
+test('flip card', async t => {
+    const deck = await initDeck(tableId, "test-flip");
+    const cards = await registerCards([1, 2, 3]);
+    deck.add(cards);
+    t.false(await deck.areFlipped(cards).then(flipped => flipped.some(Boolean)));
+    deck.flip([cards[0]]); // just the first
+    t.true(await deck.isFlipped(cards[0]));
+    deck.flip(cards); // mixed flip
+    t.false(await deck.isFlipped(cards[0]));
+    t.true(await deck.areFlipped(cards.slice(-2)).then(flipped => flipped.every(Boolean)));
+});
+
 test('players', async t => {
     const userIds = ["PlayerA", "PlayerB"];
     const tableId = await newTable(userIds);
