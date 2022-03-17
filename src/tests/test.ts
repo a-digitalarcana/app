@@ -1,6 +1,6 @@
 import test from 'ava';
 import { createClient } from "redis";
-import { initDeck, registerCard, getCard, flipCard } from "../cards";
+import { initDeck, registerCard } from "../cards";
 import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
 
 const tableId = "table:test";
@@ -90,9 +90,15 @@ test('peek cards', async t => {
 });
 
 test('flip card', async t => {
-    const card = await registerCard(1);
-    flipCard(card.id);
-    return getCard(card.id).then(card => t.is(card.facing, 1));
+    const deck = await initDeck(tableId, "test-flip");
+    const cards = await registerCards([1, 2, 3]);
+    deck.add(cards);
+    t.false(await deck.areFlipped(cards).then(flipped => flipped.some(Boolean)));
+    deck.flip([cards[0]]); // just the first
+    t.true(await deck.isFlipped(cards[0]));
+    deck.flip(cards); // mixed flip
+    t.false(await deck.isFlipped(cards[0]));
+    t.true(await deck.areFlipped(cards.slice(-2)).then(flipped => flipped.every(Boolean)));
 });
 
 test('players', async t => {

@@ -1,5 +1,5 @@
 import { CardGame, ClickDeckArgs, ClickTableArgs } from "../cardgame";
-import { initDeck, getDecks, getDeckName, getShuffledDeck, flipCard, CardDeckMap, getCard, isFlipped } from "../cards";
+import { initDeck, getDecks, getDeckName, getShuffledDeck, CardDeckMap, getCard } from "../cards";
 import { revealCard } from "../cardtable";
 import { strict as assert } from "assert";
 
@@ -33,7 +33,7 @@ export class Browse extends CardGame
                 if (deck && deck != hand) {
                     const id = await deck.peekId();
                     if (id != null) {
-                        flipCard(id);
+                        deck.flipIds([id]);
                         revealCard(this.tableId, await getCard(id));
                     }
                 }
@@ -58,10 +58,6 @@ export class Browse extends CardGame
             if (deck) {
                 let card = await deck.drawCard(hand);
                 if (card != null) {
-                    if (isFlipped(card)) {
-                        flipCard(card.id);
-                        card = await getCard(card.id);
-                    }
                     revealCard(this.tableId, card);
                 }
             }

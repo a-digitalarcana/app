@@ -32,14 +32,14 @@ export class War extends CardGame
         ]);
 
         const getLastPlayed = async () => {
-            const [cardsA, cardsB] = await Promise.all([
+            const [A, B] = await Promise.all([
                 getDeckCards(this.tableId, playedA.name),
                 getDeckCards(this.tableId, playedB.name),
             ]);
-            if (cardsA.ids.length > cardsB.ids.length) {
-                return [await getCard(cardsA.ids[cardsA.ids.length - 1]), null];
-            } else if (cardsB.ids.length > cardsA.ids.length) {
-                return [null, await getCard(cardsB.ids[cardsB.ids.length - 1])];
+            if (A.cards.length > B.cards.length) {
+                return [await getCard(A.cards[A.cards.length - 1].id), null];
+            } else if (B.cards.length > A.cards.length) {
+                return [null, await getCard(B.cards[B.cards.length - 1].id)];
             }
             return [null, null];
         };
@@ -49,6 +49,7 @@ export class War extends CardGame
         const cards = allCards();
 
         // Use face value (ignore suit) unless major arcana (which beats minor)
+        // TODO: Check rarity first?
         const getValue = (card: Card) => {
             if (card.value < totalMinor) {
                 return card.value % minorCards.length;

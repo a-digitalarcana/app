@@ -9,14 +9,13 @@ export type Card = {
     value: number,      // index into allCards or token_id % totalCards
     token_id: number,   // token_id of this card in the FA2 contract
     ipfsUri: string,    // metadata location
-    facing: number      // facing (even=default, odd=flipped)
 }
 
-export const registerCard = async (value: number, token_id: number = -1, ipfsUri: string = "", facing = 0) => {
+export const registerCard = async (value: number, token_id: number = -1, ipfsUri: string = "") => {
     const getNextCardId = async (): Promise<number> => {
         return await redis.incr('nextCardId');
     };
-    const card = {id: await getNextCardId(), value, token_id, ipfsUri, facing};
+    const card = {id: await getNextCardId(), value, token_id, ipfsUri};
     redis.hSet(`card:${card.id}`, card);
     return card;
 };
@@ -27,25 +26,12 @@ export const getCard = async (id: number): Promise<Card> => {
         id: JSON.parse(card.id),
         value: JSON.parse(card.value),
         token_id: JSON.parse(card.token_id),
-        ipfsUri: card.ipfsUri,
-        facing: JSON.parse(card.facing)
+        ipfsUri: card.ipfsUri
     };
 };
 
 export const getCards = async (ids: number[]): Promise<Card[]> => {
     return Promise.all(ids.map(id => getCard(id)));
-};
-
-export const flipCard = async (id: number) => {
-    redis.hIncrBy(`card:${id}`, 'facing', 1);
-};
-
-export const flipCards = async (ids: number[]) => {
-    return Promise.all(ids.map(id => flipCard(id)));
-};
-
-export const isFlipped = (card: Card) => {
-    return card.facing % 2 != 0;
 };
 
 export const clearOwned = (walletAddress: string) => {
@@ -73,15 +59,23 @@ export const getOwned = async (walletAddress: string) => {
     return idStrings.map(Number);
 };
 
+const getCardStates = async (key: string, idStrings: string[]) => {
+    const facingStrings = (idStrings.length > 0) ?
+        await redis.hmGet(`${key}:facing`, idStrings) : [];
+    return idStrings.map((idString, i) => (
+        {id: Number(idString), facing: Number(facingStrings[i])}
+    ));
+};
+
 export const initDeck = async (tableId: string, name: string) => {
     redis.sAdd(`${tableId}:decks`, name);
     const key = `${tableId}:deck:${name}`;
     const cards = await redis.zRangeWithScores(key, 0, -1);
     const [minScore, maxScore] = (cards.length > 0) ?
-        [cards[0].score, cards[cards.length - 1].score] : [0, 0];
+        [cards[0].score, cards[cards.length - 1].score] : [-1, 1]; // Reserve zero for not in deck (default returned by zScore).
     const deck = new CardDeck(name, key, tableId, minScore, maxScore);
-    const ids = cards.map(card => Number(card.value));
-    sendEvent(tableId, 'initDeck', key, ids);
+    const idStrings = cards.map(card => card.value);
+    sendEvent(tableId, 'initDeck', key, await getCardStates(key, idStrings));
     return deck;
 };
 
@@ -92,7 +86,7 @@ export const getDecks = async (tableId: string) => {
 export const getDeckCards = async (tableId: string, name: string) => {
     const key = `${tableId}:deck:${name}`;
     const idStrings = await redis.zRange(key, 0, -1);
-    return {key, ids: idStrings.map(Number)};
+    return {key, cards: await getCardStates(key, idStrings)};
 };
 
 export const getDeckName = (x: number, z: number) => {
@@ -122,12 +116,19 @@ export class CardDeck
         this._maxScore = maxScore;
     }
 
-    _addIds(idStrings: string[], toStart = false) {
-
-        // Verify ids have not already been added to deck.
+    _verifyHaveNot(idStrings: string[]) {
         redis.zmScore(this.key, idStrings)
-            .then(results => assert(!results.some(Boolean), `${this.key}: ${idStrings}`));
+            .then(results => assert(!results.some(Boolean), `${this.key} already has: ${idStrings}`));
+    }
+    _verifyHave(idStrings: string[]) {
+        redis.zmScore(this.key, idStrings)
+            .then(results => assert(results.every(Boolean), `${this.key} does not have: ${idStrings}`));
+    }
 
+    _addIds(idStrings: string[], toStart = false) {
+        this._verifyHaveNot(idStrings);
+
+        // Keep track of min/max score
         let i: number;
         if (toStart) {
             this._minScore -= idStrings.length;
@@ -137,16 +138,11 @@ export class CardDeck
             this._maxScore += idStrings.length;
         }
 
-        // Add them to the deck.
         redis.zAdd(this.key, idStrings.map(idString => ({score: i++, value: idString})));
     }
     _removeIds(idStrings: string[]) {
-
-        // Verify ids currently exist in this deck.
-        redis.zmScore(this.key, idStrings)
-            .then(results => assert(results.every(Boolean), `${this.key}: ${idStrings}`));
-
-        // Remove them from this deck.
+        this._verifyHave(idStrings);
+        redis.hDel(this._facingKey, idStrings);
         redis.zRem(this.key, idStrings);
     }
 
@@ -198,6 +194,32 @@ export class CardDeck
 
     async numCards() {
         return await redis.zCard(this.key);
+    }
+
+    get _facingKey() {return `${this.key}:facing`;}
+
+    flip = (cards: Card[]) => this.flipIds(cards.map(card => card.id));
+    flipIds(ids: number[]) {
+        const key = this._facingKey;
+        const idStrings = ids.map(String);
+        this._verifyHave(idStrings);
+        idStrings.forEach(idString => redis.hIncrBy(key, idString, 1));
+        redis.hmGet(key, idStrings).then(facingStrings =>
+            sendEvent(this.tableId, 'facing', this.key, facingStrings.map((facingString, i) => (
+                {id: ids[i], facing: Number(facingString)}
+            ))));
+    }
+
+    areFlipped = (cards: Card[]) => this.areFlippedIds(cards.map(card => card.id));
+    async areFlippedIds(ids: number[]) {
+        const facingStrings = await redis.hmGet(this._facingKey, ids.map(String));
+        return facingStrings.map(facingString => Number(facingString) % 2 != 0);
+    }
+
+    isFlipped = (card: Card) => this.isFlippedId(card.id);
+    async isFlippedId(id: number) {
+        const facingString = await redis.hGet(this._facingKey, String(id));
+        return facingString != undefined && Number(facingString) % 2 != 0;
     }
 }
 

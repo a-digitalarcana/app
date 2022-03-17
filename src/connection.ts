@@ -236,9 +236,9 @@ export class Connection
         this.socket.emit('setTable', tableId, seat, count);
 
         // Send initial deck state
-        getDecks(tableId).then(decks => decks.forEach(deck => {
-            getDeckCards(tableId, deck).then(cards => {
-                this.socket.emit('initDeck', cards.key, cards.ids);
+        getDecks(tableId).then(decks => decks.forEach(name => {
+            getDeckCards(tableId, name).then(deck => {
+                this.socket.emit('initDeck', deck.key, deck.cards);
             });
         }));
 
