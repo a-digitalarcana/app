@@ -149,7 +149,7 @@ export class CardDeck
     add = (cards: Card[], toStart = false) => this.addIds(cards.map(card => card.id), toStart);
     addIds(ids: number[], toStart = false) {
         this._addIds(ids.map(String), toStart);
-        sendEvent(this.tableId, 'addCards', this.key, ids);
+        sendEvent(this.tableId, 'addCards', this.key, ids, toStart);
     }
 
     move = (cards: Card[], to: CardDeck, toStart = false) => this.moveIds(cards.map(card => card.id), to, toStart);
@@ -157,13 +157,13 @@ export class CardDeck
         const idStrings = ids.map(String);
         this._removeIds(idStrings);
         to._addIds(idStrings, toStart);
-        sendEvent(this.tableId, 'moveCards', to.key, ids);
+        sendEvent(this.tableId, 'moveCards', to.key, ids, toStart);
     }
     moveAll(to: CardDeck, toStart = false) {
         redis.zRange(this.key, 0, -1).then(idStrings => {
             to._addIds(idStrings, toStart);
             const ids = idStrings.map(Number);
-            sendEvent(this.tableId, 'moveCards', to.key, ids);
+            sendEvent(this.tableId, 'moveCards', to.key, ids, toStart);
         });
         redis.del(this.key);
     }
@@ -186,7 +186,7 @@ export class CardDeck
         if (top) {
             to._addIds([top.value], toStart);
             const id = Number(top.value);
-            sendEvent(this.tableId, 'moveCards', to.key, [id]);
+            sendEvent(this.tableId, 'moveCards', to.key, [id], toStart);
             return await getCard(id);
         }
         return null;
