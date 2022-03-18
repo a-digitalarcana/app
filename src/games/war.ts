@@ -62,11 +62,6 @@ export class War extends CardGame
             const player = args.userId;
             const name = args.deck;
 
-            // Do not respond to right-clicl
-            if (args.alt) {
-                return;
-            }
-
             // Wait for board to clear
             if (cardA && cardB) {
                 return;

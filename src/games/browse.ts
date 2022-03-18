@@ -27,19 +27,6 @@ export class Browse extends CardGame
             const name = args.deck;
             const selected = args.selected;
 
-            // Right click to flip cards.
-            if (args.alt) {
-                const deck = dir[name];
-                if (deck && deck != hand) {
-                    const id = await deck.peekId();
-                    if (id != null) {
-                        deck.flipIds([id]);
-                        revealCard(this.tableId, await getCard(id));
-                    }
-                }
-                return;
-            }
-
             // Add selected cards to deck.
             if (selected && selected.length > 0) {
                 if (name in dir) {
@@ -63,10 +50,22 @@ export class Browse extends CardGame
             }
         });
 
+        // Right click to flip cards.
+        this.onRightClickDeck(async (args: ClickDeckArgs) => {
+            const deck = dir[args.deck];
+            if (deck && deck != hand) {
+                const id = await deck.peekId();
+                if (id != null) {
+                    deck.flipIds([id]);
+                    revealCard(this.tableId, await getCard(id));
+                }
+            }
+        });
+
         // Create a new deck from selected cards.
         this.onClickTable(async (args: ClickTableArgs) => {
             const selected = args.selected;
-            if (!args.alt && selected && selected.length > 0) {
+            if (selected && selected.length > 0) {
                 const deck = await initDeck(this.tableId, getDeckName(args.x, args.z));
                 hand.moveIds(selected, deck);
                 dir[deck.name] = deck;

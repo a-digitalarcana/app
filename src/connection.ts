@@ -180,11 +180,11 @@ export class Connection
             beginGame('Browse', tableId);
         });
 
-        socket.on('clickDeck', (deck: string, selected: number[], alt: boolean) => {
-            this.tableAction('clickDeck', {deck, selected, alt});
+        socket.on('clickDeck', (deck: string, selected: number[], right: boolean) => {
+            this.tableAction(right ? 'rightClickDeck' : 'clickDeck', {deck, selected});
         });
-        socket.on('clickTable', (x: number, z: number, selected: number[], alt: boolean) => {
-            this.tableAction('clickTable', {x, z, selected, alt});
+        socket.on('clickTable', (x: number, z: number, selected: number[], right: boolean) => {
+            this.tableAction(right ? 'rightClickTable' : 'clickTable', {x, z, selected});
         });
     }
 

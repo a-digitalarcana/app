@@ -5,8 +5,7 @@ import { redis, RedisClientType } from "./server";
 
 interface ClickArgs {
     userId: string;
-    selected: number[]
-    alt: boolean;
+    selected: number[];
 }
 
 export interface ClickDeckArgs extends ClickArgs {
@@ -19,7 +18,9 @@ export interface ClickTableArgs extends ClickArgs {
 }
 
 type OnClickDeckFn = (args: ClickDeckArgs) => void;
+type OnRightClickDeckFn = (args: ClickDeckArgs) => void;
 type OnClickTableFn = (args: ClickTableArgs) => void;
+type OnRightClickTableFn = (args: ClickDeckArgs) => void;
 
 export abstract class CardGame
 {
@@ -30,8 +31,14 @@ export abstract class CardGame
     _onClickDeck: OnClickDeckFn | null = null;
     onClickDeck(fn: OnClickDeckFn) {this._onClickDeck = fn;}
 
+    _onRightClickDeck: OnClickDeckFn | null = null;
+    onRightClickDeck(fn: OnClickDeckFn) {this._onRightClickDeck = fn;}
+
     _onClickTable: OnClickTableFn | null = null;
     onClickTable(fn: OnClickTableFn) {this._onClickTable = fn;}
+
+    _onRightClickTable: OnClickTableFn | null = null;
+    onRightClickTable(fn: OnClickTableFn) {this._onRightClickTable = fn;}
 
     _tableId: string;
     get tableId() {return this._tableId;}
@@ -48,14 +55,22 @@ export abstract class CardGame
         this.sub.connect().then(() => {
             this.sub.subscribe(`${tableId}:clickDeck`, (msg) => {
                 if (this._onClickDeck) {
-                    const args = JSON.parse(msg);
-                    this._onClickDeck(args);
+                    this._onClickDeck(JSON.parse(msg));
+                }
+            });
+            this.sub.subscribe(`${tableId}:rightClickDeck`, (msg) => {
+                if (this._onRightClickDeck) {
+                    this._onRightClickDeck(JSON.parse(msg));
                 }
             });
             this.sub.subscribe(`${tableId}:clickTable`, (msg) => {
                 if (this._onClickTable) {
-                    const args = JSON.parse(msg);
-                    this._onClickTable(args);
+                    this._onClickTable(JSON.parse(msg));
+                }
+            });
+            this.sub.subscribe(`${tableId}:rightClickTable`, (msg) => {
+                if (this._onRightClickTable) {
+                    this._onRightClickTable(JSON.parse(msg));
                 }
             });
         });
