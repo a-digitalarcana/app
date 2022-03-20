@@ -8,9 +8,10 @@ import { strict as assert } from "assert";
 
 export class War extends CardGame
 {
+    static get requiredPlayers() {return 2;}
     getName() {return "War";}
-    getMinPlayers() {return 2;}
-    getMaxPlayers() {return 2;}
+    getMinPlayers() {return War.requiredPlayers;}
+    getMaxPlayers() {return War.requiredPlayers;}
 
     async begin(initialSetup: boolean) {
         if (!await super.begin(initialSetup)) {

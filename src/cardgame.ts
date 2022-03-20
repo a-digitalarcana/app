@@ -18,9 +18,7 @@ export interface ClickTableArgs extends ClickArgs {
 }
 
 type OnClickDeckFn = (args: ClickDeckArgs) => void;
-type OnRightClickDeckFn = (args: ClickDeckArgs) => void;
 type OnClickTableFn = (args: ClickTableArgs) => void;
-type OnRightClickTableFn = (args: ClickDeckArgs) => void;
 
 export abstract class CardGame
 {

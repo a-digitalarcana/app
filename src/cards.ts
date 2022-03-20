@@ -90,7 +90,7 @@ export const getDeckCards = async (tableId: string, name: string) => {
 };
 
 export const getDeckName = (x: number, z: number) => {
-    return `{${x},${z}}`;
+    return `{${x.toFixed(2)},${z.toFixed(2)}}`;
 };
 
 // A collection of cards (not necessarily a full deck, might be a discard pile, or current set of cards in hand, etc.).
@@ -191,6 +191,9 @@ export class CardDeck
         }
         return null;
     }
+
+    drawCards = async (count: number, to: CardDeck, toStart = false) =>
+        Promise.all(Array(count).fill(null).map(() => this.drawCard(to, toStart)));
 
     async numCards() {
         return await redis.zCard(this.key);

@@ -5,9 +5,10 @@ import { strict as assert } from "assert";
 
 export class Browse extends CardGame
 {
+    static get requiredPlayers() {return 1;}
     getName() {return "Browse";}
-    getMinPlayers() {return 1;}
-    getMaxPlayers() {return 1;}
+    getMinPlayers() {return Browse.requiredPlayers;}
+    getMaxPlayers() {return Browse.requiredPlayers;}
 
     async begin(initialSetup: boolean) {
         if (!await super.begin(initialSetup)) {

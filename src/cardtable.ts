@@ -3,10 +3,12 @@ import { getUserName, sendEvent } from "./connection";
 import { strict as assert } from "assert";
 import { redis } from "./server";
 import { Browse } from "./games/browse";
+import { Solitaire } from "./games/solitaire";
 import { War } from "./games/war";
 
 const gameTypes: any = {
     Browse,
+    Solitaire,
     War,
 };
 
@@ -15,6 +17,11 @@ const newGame = (className: string, tableId: string) => {
 };
 
 const games: any = {};
+
+export const requiredPlayers = (name: string): number => {
+    const requiredPlayers = gameTypes[name]?.requiredPlayers;
+    return requiredPlayers ?? 0;
+};
 
 export const beginGame = (name: string, tableId: string) => {
 
@@ -131,7 +138,8 @@ export const broadcastMsg = async (tableId: string, text: string, exclude?: stri
     redis.xAdd(`${tableId}:chat`, '*', {msg});
 };
 
-export const revealCard = (tableId: string, card: Card) => revealCards(tableId, [card]);
-export const revealCards = (tableId: string, cards: Card[]) => {
-    sendEvent(tableId, 'revealCards', cards);
+// toId can be tableId or individual userId
+export const revealCard = (toId: string, card: Card) => revealCards(toId, [card]);
+export const revealCards = (toId: string, cards: Card[]) => {
+    sendEvent(toId, 'revealCards', cards);
 };

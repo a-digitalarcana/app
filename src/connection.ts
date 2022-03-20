@@ -1,5 +1,5 @@
 import { Card, getDecks, getDeckCards, getCards } from "./cards";
-import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers, getPlayerSlot, getPlayerSeat } from "./cardtable";
+import { newTable, beginGame, resumeGame, broadcastMsg, numPlayers, getPlayerSlot, getPlayerSeat, requiredPlayers } from "./cardtable";
 import { collectCards } from "./cardcollector";
 import { Socket } from "socket.io";
 import { redis } from "./server";
@@ -153,6 +153,12 @@ export class Connection
             const name = await this.getName();
             console.log(`Player ${name} wants to play ${game}`);
             if (!this.verifyUserId()) {
+                return;
+            }
+
+            if (requiredPlayers(game) == 1) {
+                const tableId = await newTable([this.userId]);
+                beginGame(game, tableId);
                 return;
             }
 
