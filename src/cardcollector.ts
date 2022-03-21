@@ -72,6 +72,7 @@ class CardCollector
                 const amount = amounts.get(token_id);
                 if (amount) {
                     for (let i = 0; i < amount; i++) {
+                        // TODO: Shuffle ids prior to registering
                         promises.push(registerCard(token_id % totalCards, token_id, ipfsUri));
                     }
                     //console.log(`token_id=${entry.token_id} amount=${amount} metadata=${ipfsUri}`);

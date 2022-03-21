@@ -1,6 +1,6 @@
 import test from 'ava';
 import { createClient } from "redis";
-import { initDeck, registerCard } from "../cards";
+import { initDeck, registerCards } from "../cards";
 import { newTable, numPlayers, getPlayerSeat } from '../cardtable';
 
 const tableId = "table:test";
@@ -25,10 +25,6 @@ test('init deck', async t => {
     const deck = await initDeck(tableId, "test");
     t.truthy(deck);
 });
-
-const registerCards = async (values: number[]) => {
-    return await Promise.all(values.map(value => registerCard(value)));
-};
 
 test('num cards', async t => {
     const deck = await initDeck(tableId, "test");

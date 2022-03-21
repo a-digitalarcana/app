@@ -1,5 +1,5 @@
 import { strict as assert } from "assert";
-import { totalCards } from "./tarot";
+import { totalCards, totalMinor, majorArcana } from "./tarot";
 import { shuffle } from "./utils";
 import { redis } from "./server";
 import { sendEvent } from "./connection";
@@ -19,6 +19,9 @@ export const registerCard = async (value: number, token_id: number = -1, ipfsUri
     redis.hSet(`card:${card.id}`, card);
     return card;
 };
+
+export const registerCards = async (values: number[]) =>
+    Promise.all(values.map(value => registerCard(value)));
 
 export const getCard = async (id: number): Promise<Card> => {
     const card = await redis.hGetAll(`card:${id}`);
@@ -72,7 +75,7 @@ export const initDeck = async (tableId: string, name: string) => {
     const key = `${tableId}:deck:${name}`;
     const cards = await redis.zRangeWithScores(key, 0, -1);
     const [minScore, maxScore] = (cards.length > 0) ?
-        [cards[0].score, cards[cards.length - 1].score] : [-1, 1]; // Reserve zero for not in deck (default returned by zScore).
+        [Math.min(-1, cards[0].score), Math.max(1, cards[cards.length - 1].score)] : [-1, 1]; // Reserve zero for not in deck (default returned by zScore).
     const deck = new CardDeck(name, key, tableId, minScore, maxScore);
     const idStrings = cards.map(card => card.value);
     sendEvent(tableId, 'initDeck', key, await getCardStates(key, idStrings));
@@ -137,6 +140,7 @@ export class CardDeck
             i = this._maxScore;
             this._maxScore += idStrings.length;
         }
+        assert(i != 0, `${this.key} min:${this._minScore} max:${this._maxScore} ${idStrings}`);
 
         redis.zAdd(this.key, idStrings.map(idString => ({score: i++, value: idString})));
     }
@@ -181,19 +185,23 @@ export class CardDeck
         return id ? await getCard(id) : null;
     }
 
-    async drawCard(to: CardDeck, toStart = false) {
-        const top = await redis.zPopMin(this.key);
-        if (top) {
-            to._addIds([top.value], toStart);
-            const id = Number(top.value);
-            sendEvent(this.tableId, 'moveCards', to.key, [id], toStart);
-            return await getCard(id);
+    async drawCards(count: number, to: CardDeck, toStart = false) {
+        const results = await redis.zPopMinCount(this.key, count);
+        if (results && results.length > 0) {
+            const idStrings = results.map(result => result.value);
+            redis.hDel(this._facingKey, idStrings);
+            to._addIds(idStrings, toStart);
+            const ids = idStrings.map(Number);
+            sendEvent(this.tableId, 'moveCards', to.key, ids, toStart);
+            return getCards(ids);
         }
-        return null;
+        return [];
     }
 
-    drawCards = async (count: number, to: CardDeck, toStart = false) =>
-        Promise.all(Array(count).fill(null).map(() => this.drawCard(to, toStart)));
+    async drawCard(to: CardDeck, toStart = false) {
+        const cards = await this.drawCards(1, to, toStart);
+        return (cards && cards.length > 0) ? cards[0] : null;
+    }
 
     async numCards() {
         return await redis.zCard(this.key);
@@ -228,9 +236,27 @@ export class CardDeck
 
 export type CardDeckMap = { [name: string]: CardDeck };
 
-const values = Array.from({length: totalCards}, (_, i) => i);
+const valuesAll = Array.from({length: totalCards}, (_, i) => i);
+const valuesMinor = Array.from({length: totalMinor}, (_, i) => i);
+const valuesMajor = Array.from({length: majorArcana.length}, (_, i) => i);
 
-export const getShuffledDeck = async (walletAddress: string) => {
+export enum DeckContents
+{
+    AllCards,
+    MinorOnly,
+    MajorOnly,
+}
+
+export const getShuffledDeck = async (walletAddress: string, contents = DeckContents.AllCards) => {
+
+    let values: number[];
+    switch (contents)
+    {
+        case DeckContents.AllCards: values = valuesAll; break;
+        case DeckContents.MinorOnly: values = valuesMinor; break;
+        case DeckContents.MajorOnly: values = valuesMajor; break;
+        default: values = []; break;
+    }
 
     shuffle(values);
 

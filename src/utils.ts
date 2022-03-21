@@ -38,3 +38,5 @@ export const shuffle = (list: number[]) => {
         [list[i], list[n]] = [list[n], list[i]];
     }
 };
+
+export const notNull = <T>(x: T | null): x is T => x !== null;
