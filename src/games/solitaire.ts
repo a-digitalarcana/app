@@ -1,5 +1,5 @@
 import { CardGame, ClickDeckArgs } from "../cardgame";
-import { initDeck, getDeckName, getShuffledDeck, registerCard, Card, CardDeck, CardDeckMap, DeckContents } from "../cards";
+import { initDeck, getDeckName, getShuffledDeck, registerCard, Card, CardDeck, CardDeckMap, DeckContents, getCard } from "../cards";
 import { broadcastMsg, revealCard } from "../cardtable";
 import { minorCards } from "../tarot";
 
@@ -35,7 +35,8 @@ export class Solitaire extends CardGame
         const dir: CardDeckMap = {};
         decks.concat(foundations).concat(tableau)
             .forEach(deck => dir[deck.name] = deck);
-            
+
+        // TODO: Need ablity to replace stock when empty.
         const drawStock = async () => {
             const cards = await stock.drawCards(3, talon, true);
             if (cards.length > 0) {
@@ -47,6 +48,7 @@ export class Solitaire extends CardGame
         const drawTalon = async () => {
 
             // Put card back.
+            // TODO: Generalize this to any deck where a card is picked up.
             let card = await hand.drawCard(talon, true);
             if (card != null) {
                 talon.flip([card]);
@@ -75,10 +77,40 @@ export class Solitaire extends CardGame
         };
 
         const placeTableau = async (pile: CardDeck) => {
+
+            // TODO: Need ability to click in empty area (to place King).
             const card = await hand.peekCard();
             if (card != null && await isValidMove(card, pile)) {
                 hand.move([card], pile, true);
                 // TODO: Face up cards need to fan down while leaving face down cards stacked.
+                pile.flip([card]);
+                return;
+            }
+
+            const topId = await pile.peekId();
+            if (topId == null) {
+                return;
+            }
+            if (await pile.isFlippedId(topId)) {
+                pile.drawCard(hand);
+            } else {
+                pile.flipIds([topId]);
+                revealCard(this.tableId, await getCard(topId));
+            }
+        };
+
+        const placeFoundation = async (pile: CardDeck) => {
+            const card = await hand.peekCard();
+            if (card == null) {
+                return;
+            }
+            const top = await pile.peekCard();
+            if (top == null) {
+                return;
+            }
+            const rank = card.value % minorCards.length;
+            if (rank === (top.value % minorCards.length) + 1) {
+                hand.move([card], pile, true);
                 pile.flip([card]);
             }
         };
@@ -92,6 +124,10 @@ export class Solitaire extends CardGame
                 default:
                     if (tableau.includes(deck)) {
                         placeTableau(deck);
+                        return;
+                    }
+                    if (foundations.includes(deck)) {
+                        placeFoundation(deck);
                         return;
                     }
             }
@@ -112,8 +148,7 @@ export class Solitaire extends CardGame
             
             // Add placeholder blank cards.
             foundations.forEach(foundation => {
-                // TODO: These are getting upgraded when revealing our owned blue ace.
-                registerCard(0).then(card => {
+                registerCard(-1).then(card => {
                     foundation.add([card]);
                     foundation.flipIds([card.id]);
                 });
