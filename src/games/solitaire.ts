@@ -2,6 +2,7 @@ import { CardGame, ClickDeckArgs } from "../cardgame";
 import { initDeck, getDeckName, getShuffledDeck, registerCard, Card, CardDeck, CardDeckMap, DeckContents, getCard } from "../cards";
 import { broadcastMsg, revealCard } from "../cardtable";
 import { minorCards } from "../tarot";
+import { sleep } from "../utils";
 
 export class Solitaire extends CardGame
 {
@@ -36,6 +37,9 @@ export class Solitaire extends CardGame
         decks.concat(foundations).concat(tableau)
             .forEach(deck => dir[deck.name] = deck);
 
+        // TODO: Persist across server restart.
+        let lastDrawPile: CardDeck | null = null;
+
         // TODO: Need ablity to replace stock when empty.
         const drawStock = async () => {
             const cards = await stock.drawCards(3, talon, true);
@@ -46,18 +50,16 @@ export class Solitaire extends CardGame
         };
 
         const drawTalon = async () => {
-
-            // Put card back.
-            // TODO: Generalize this to any deck where a card is picked up.
-            let card = await hand.drawCard(talon, true);
-            if (card != null) {
-                talon.flip([card]);
+            if (await hand.numCards() > 0) {
                 return;
             }
 
             // Pick card up.
             await talon.drawCard(hand);
-            card = await talon.peekCard();
+            lastDrawPile = talon;
+
+            // Reveal next in pile.
+            const card = await talon.peekCard();
             if (card != null) {
                 revealCard(this.tableId, card);
             }
@@ -76,7 +78,7 @@ export class Solitaire extends CardGame
             return rank === King;
         };
 
-        const placeTableau = async (pile: CardDeck) => {
+        const clickTableau = async (pile: CardDeck) => {
 
             // TODO: Need ability to click in empty area (to place King).
             const card = await hand.peekCard();
@@ -92,14 +94,17 @@ export class Solitaire extends CardGame
                 return;
             }
             if (await pile.isFlippedId(topId)) {
-                pile.drawCard(hand);
+                if (await hand.numCards() == 0) {
+                    pile.drawCard(hand);
+                    lastDrawPile = pile;
+                }
             } else {
                 pile.flipIds([topId]);
                 revealCard(this.tableId, await getCard(topId));
             }
         };
 
-        const placeFoundation = async (pile: CardDeck) => {
+        const clickFoundation = async (pile: CardDeck) => {
             const card = await hand.peekCard();
             if (card == null) {
                 return;
@@ -117,35 +122,35 @@ export class Solitaire extends CardGame
 
         this.onClickDeck(async (args: ClickDeckArgs) => {
             const deck = dir[args.deck];
+
+            // Put card back.
+            if (lastDrawPile != null && lastDrawPile == deck) {
+                let card = await hand.drawCard(lastDrawPile, true);
+                if (card != null) {
+                    lastDrawPile.flip([card]);
+                    lastDrawPile = null;
+                    return;
+                }
+            }
+
             switch (deck)
             {
                 case stock: drawStock(); break;
                 case talon: drawTalon(); break;
                 default:
                     if (tableau.includes(deck)) {
-                        placeTableau(deck);
+                        clickTableau(deck);
                         return;
                     }
                     if (foundations.includes(deck)) {
-                        placeFoundation(deck);
+                        clickFoundation(deck);
                         return;
                     }
             }
         });
 
         if (initialSetup) {
-            const player = this.players[0];
-            // TODO: Mark cards black vs red (scoped to table)
-            stock.add(await getShuffledDeck(player, DeckContents.MinorOnly));
-            tableau.forEach((pile, i) => stock.drawCards(i+1, pile)
-                .then(cards => {
-                    const top = cards[0];
-                    if (top != null) {
-                        pile.flipIds([top.id]);
-                        revealCard(this.tableId, top);
-                    }
-                }));
-            
+
             // Add placeholder blank cards.
             foundations.forEach(foundation => {
                 registerCard(-1).then(card => {
@@ -153,6 +158,21 @@ export class Solitaire extends CardGame
                     foundation.flipIds([card.id]);
                 });
             });
+
+            // TODO: Mark cards black vs red (scoped to table)
+            const player = this.players[0];
+            stock.add(await getShuffledDeck(player, DeckContents.MinorOnly));
+            for (let i = 0; i < tableau.length; i++) {
+                for (let j = i; j < tableau.length; j++) {
+                    const pile = tableau[j];
+                    const card = await stock.drawCard(pile, true);
+                    if (j == i && card != null) {
+                        pile.flipIds([card.id]);
+                        revealCard(this.tableId, card);
+                    }
+                    await sleep(50);
+                }
+            }
 
             broadcastMsg(this.tableId, "Welcome to Solitaire!");
         }

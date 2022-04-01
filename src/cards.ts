@@ -70,6 +70,7 @@ const getCardStates = async (key: string, idStrings: string[]) => {
     ));
 };
 
+// TODO: Ability to specify DeckMode (e.g. fan down).
 export const initDeck = async (tableId: string, name: string) => {
     redis.sAdd(`${tableId}:decks`, name);
     const key = `${tableId}:deck:${name}`;
