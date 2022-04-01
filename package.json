@@ -38,7 +38,7 @@
     "react-dom": "^18.0.0",
     "react-scripts": "4.0.3",
     "react-unity-webgl": "^8.8.0",
-    "redis": "^4.0.2",
+    "redis": "^4.0.6",
     "socket.io": "^4.4.1",
     "socket.io-client": "^4.4.1",
     "ts-node": "^10.7.0",
