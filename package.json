@@ -35,7 +35,7 @@
     "postcss": ">=8.4.12",
     "react": "^18.1.0",
     "react-bootstrap": "^2.3.0",
-    "react-dom": "^18.0.0",
+    "react-dom": "^18.1.0",
     "react-scripts": "4.0.3",
     "react-unity-webgl": "^8.8.0",
     "redis": "^4.0.6",
