@@ -7,7 +7,9 @@
 
 ### Introduction
 
-Digital Arcana is a platform born from the love of tarot art and a desire to utilize it in games. While NFTs today are largely focused on one of two avenues, the purely aesthetic or those bound to a particular game or function, our goal is to merge the two into one. We aim to provide great works of art, which have intrinsic value, integrated seamlessly into a platform that provides that art multiple functions.
+Digital Arcana is a platform born from the love of tarot art and a desire to utilize it in games.  Providing distraction in turbulent times, teaching rule-based learning principles, and fostering competition in a structured environment are just a few of the great aspects of games.  They even channel conflict in constructive directions and foster creativity.
+
+Today, NFTs are largely focused on one of two avenues, the purely aesthetic or those bound to a particular game or function. Our goal is to merge the two into one. We aim to provide intriguing works of art (which alone have intrinsic value), integrating seamlessly across all games on a unified platform (providing utility).
 
 Players collect cards through acquiring presorted packs. The cards are used for gameplay while at the same time contributing to a player's curated collection. We will work with artists to create and distribute their art as new sets to the community through the platform.
 
