@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 import { allCards } from "./tarot";
 import Container from "react-bootstrap/Container";
+import Ratio from "react-bootstrap/Ratio";
 import Stack from "react-bootstrap/Stack";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -154,10 +155,12 @@ function App() {
           </Col>
         </Stack>
         <Container fluid>
+          <Ratio aspectRatio={"4x3"}>
           <Unity
             unityContext={unityContext}
             style={{ width: "100%", height: "100%" }}
           />
+          </Ratio>
           {progression < 1 && <Loading />}
           {pct > 0 && <Progress />}
           {isDevelopment && <DevPanel />}
