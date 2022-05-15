@@ -31,7 +31,7 @@ We hope you enjoy DA as much as we do making it!
 
 #### FA2
 - https://better-call.dev/hangzhou2net/KT1N1a7TA1rEedQo2pEQXhuVgSQNvgRWKkdJ
-- https://better-call.dev/ithacanet/KT19r4jkRtopWqEVVSqyvuSYQ7Z73vPQdfGT
+- https://better-call.dev/ithacanet/KT1FhGBLyxPTnAiU41GPTPR1FzKGVajgKrme
 - SmartPy: https://github.com/a-digitalarcana/app/blob/main/python/contracts/fa2.py
 
 #### Escrow
