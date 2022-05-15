@@ -1,7 +1,7 @@
 # Digital Arcana
 <img src="img/thumbnail.png" width="175">
 
-**Working prototype (hangzhounet):** https://digitalarcana.xyz/
+**Working prototype:** https://digitalarcana.xyz/
 
 **Overview:** https://youtu.be/AxaY7xbLZLU
 
