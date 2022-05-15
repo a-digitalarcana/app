@@ -1,7 +1,7 @@
 # Digital Arcana
 <img src="img/thumbnail.png" width="175">
 
-**Working prototype:** https://digitalarcana.xyz/
+**Working prototype:** https://digitalarcana.xyz/ (raise or lower piano top to adjust volume)
 
 **Overview:** https://youtu.be/AxaY7xbLZLU
 
