@@ -1,9 +1,14 @@
 # Digital Arcana
 <img src="img/thumbnail.png" width="175">
 
-**Working prototype:** https://digitalarcana.xyz/ (raise or lower piano top to adjust volume)
+**Working prototype:**
 
-**Overview:** https://youtu.be/AxaY7xbLZLU
+https://digitalarcana.xyz/ (raise or lower piano top to adjust volume)
+
+**Presentation video:**
+
+[![Digital Arcana Encode x Tezos Hackathon (Extended)](img/davideo.png)](https://youtu.be/XqrJaPFfyTg "Digital Arcana Encode x Tezos Hackathon (Extended)
+")
 
 ### Introduction
 
