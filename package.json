@@ -4,7 +4,7 @@
   "private": true,
   "proxy": "http://localhost:8080",
   "dependencies": {
-    "@airgap/beacon-sdk": "^2.3.13",
+    "@airgap/beacon-sdk": "^3.3.2",
     "@pinata/sdk": "^1.1.25",
     "@taquito/beacon-wallet": "^12.1.0",
     "@taquito/signer": "^12.1.0",
